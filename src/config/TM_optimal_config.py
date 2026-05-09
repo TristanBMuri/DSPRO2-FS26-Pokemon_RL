@@ -95,7 +95,7 @@ class EnvironmentConfig:
     # corresponding custom-game variant (e.g. gen5randombattle → gen5customgame).
     # you can use data/teams/player_team_2.txt as an example.
     # or for no team, set to None.
-    player_team_path: Optional[str] = "data/teams/player_team_2.txt"
+    player_team_path: Optional[str] = None
 
     # MLflow experiment name when player_team_path is set (fixed-team training).
     mlflow_experiment_fixed_team: str = "Pokemon_RL_Battler_FixedTeam"
@@ -209,38 +209,6 @@ class CurriculumConfig:
                     step_penalty=-0.01,
                     matchup_reward_weight=0.15,
                     action_quality_weight=0.25,
-                ),
-            ),
-            CurriculumStageConfig(
-                name="random_more_moves",
-                promote_at_win_rate=0.2,
-                min_samples_for_promotion=300,
-                opponent_mix={"self": 0.7, "random": 0.1, "random_no_switch": 0.2},
-                reward_config=RewardConfig(
-                    victory_reward=10.0,
-                    defeat_penalty=-10.0,
-                    hp_value_weight=3.0,
-                    fainted_value=5.0,
-                    fainted_penalty=-5.0,
-                    step_penalty=-0.01,
-                    matchup_reward_weight=0.15,
-                    action_quality_weight=0.25,
-                ),
-            ),
-            CurriculumStageConfig(
-                name="self_play",
-                promote_at_win_rate=0.7,
-                min_samples_for_promotion=200,
-                opponent_mix={"random_no_switch": 0.6, "random": 0.4},
-                reward_config=RewardConfig(
-                    victory_reward=10.0,
-                    defeat_penalty=-10.0,
-                    hp_value_weight=3.0,
-                    fainted_value=6.0,
-                    fainted_penalty=-6.0,
-                    step_penalty=-0.01,
-                    matchup_reward_weight=0.15,
-                    action_quality_weight=0.2,
                 ),
             ),
             CurriculumStageConfig(
