@@ -312,7 +312,7 @@ class TrainingConfig:
     """Main training configuration."""
 
     # Duration
-    total_timesteps: int = 2_000_000
+    total_timesteps: int = 4_000_000
 
     # Checkpointing
     checkpoint_dir: str = "checkpoints"
@@ -491,7 +491,37 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                 sgd_minibatch_size=512,
             ),
         ),
+        "pure_league_play": TrainingConfig(
+            env=EnvironmentConfig(
+                player_team_path=None,
+                num_workers=8,
+                num_envs_per_worker=1, 
+                num_servers=8,
+                start_port=8000,
+            ),
+            model=ModelConfig(
+                num_transformer_layers=1, 
+            ),
+            ppo=PPOConfig(
+                train_batch_size=8192,
+                sgd_minibatch_size=512,
+            ),
+            curriculum=CurriculumConfig(
+                enabled=True,
+                stages=[
+                    CurriculumStageConfig(
+                        name="league_training",
+                        promote_at_win_rate=2.0,  
+                        min_samples_for_promotion=999999,
+                        opponent_mix={"historical": 0.8, "self": 0.2}, 
+                        reward_config=RewardConfig() 
+                    )
+                ]
+            )
+        ),
     }
+
+
 
     if preset not in presets:
         raise ValueError(f"Unknown preset: {preset}. Available: {list(presets.keys())}")

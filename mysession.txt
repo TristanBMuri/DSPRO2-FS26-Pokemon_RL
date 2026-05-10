@@ -1,0 +1,539 @@
+sudome@poke-rl-workstation:~/DSPRO2-FS26-Pokemon_RL$ SAVE_LEAGUE_HISTORY=1 uv run --active train_battler.py \
+  --preset pure_league_play \
+  --num-servers 8
+============================================================
+Pokemon RL Training
+============================================================
+Preset: pure_league_play
+Num servers: 8
+Start port: 8000
+============================================================
+MLflow experiment: Pokemon_RL_Marvin_Random
+2026-05-10 09:22:23,059 INFO worker.py:2013 -- Started a local Ray instance.
+2026-05-10 09:22:23,061 WARNING working_dir.py:86 -- Directory '.git' is now ignored by default when packaging the working directory. To disable
+ this behavior, set the `RAY_OVERRIDE_RUNTIME_ENV_DEFAULT_EXCLUDES=''` environment variable.
+2026-05-10 09:22:23,061 WARNING working_dir.py:86 -- Directory '.venv' is now ignored by default when packaging the working directory. To disabl
+e this behavior, set the `RAY_OVERRIDE_RUNTIME_ENV_DEFAULT_EXCLUDES=''` environment variable.
+2026-05-10 09:22:23,062 INFO packaging.py:392 -- Ignoring upload to cluster for these files: [PosixPath('/home/sudome/DSPRO2-FS26-Pokemon_RL/.gi
+tignore')]
+2026-05-10 09:22:23,064 INFO packaging.py:392 -- Ignoring upload to cluster for these files: [PosixPath('/home/sudome/DSPRO2-FS26-Pokemon_RL/pok
+emon-showdown/.gitignore')]
+2026-05-10 09:22:23,079 INFO packaging.py:392 -- Ignoring upload to cluster for these files: [PosixPath('/home/sudome/DSPRO2-FS26-Pokemon_RL/.ve
+nv/.gitignore')]
+2026-05-10 09:22:23,080 INFO packaging.py:691 -- Creating a file package for local module '/home/sudome/DSPRO2-FS26-Pokemon_RL'.
+2026-05-10 09:22:23,081 INFO packaging.py:392 -- Ignoring upload to cluster for these files: [PosixPath('/home/sudome/DSPRO2-FS26-Pokemon_RL/.gi
+tignore')]
+2026-05-10 09:22:23,081 INFO packaging.py:392 -- Ignoring upload to cluster for these files: [PosixPath('/home/sudome/DSPRO2-FS26-Pokemon_RL/pok
+emon-showdown/.gitignore')]
+2026-05-10 09:22:23,097 INFO packaging.py:392 -- Ignoring upload to cluster for these files: [PosixPath('/home/sudome/DSPRO2-FS26-Pokemon_RL/.ve
+nv/.gitignore')]
+2026-05-10 09:22:23,098 INFO packaging.py:463 -- Pushing file package 'gcs://_ray_pkg_832051808a12be3d.zip' (2.62MiB) to Ray cluster...
+2026-05-10 09:22:23,102 INFO packaging.py:476 -- Successfully pushed file package 'gcs://_ray_pkg_832051808a12be3d.zip'.
+/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/_private/worker.py:2052: FutureWarning: Tip: In future versions of Ra
+y, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn of
+f this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+Env maps to Showdown ports 8000–8007 (deterministic: RLlib worker_index × envs_per_runner + sub-env index, mod num_servers)
+Building algorithm...
+2026-05-10 09:22:23,457 WARNING algorithm_config.py:5131 -- You are running PPO on the new API stack! This is the new default behavior for this
+algorithm. If you don't want to use the new API stack, set `config.api_stack(enable_rl_module_and_learner=False,enable_env_runner_and_connector_
+v2=False)`. For a detailed migration guide, see here: https://docs.ray.io/en/master/rllib/new-api-stack-migration-guide.html
+/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/rllib/algorithms/algorithm.py:527: RayDeprecationWarning: This API is
+ deprecated and may be removed in future Ray releases. You could suppress this warning by setting env variable PYTHONWARNINGS="ignore::Deprecati
+onWarning"
+`UnifiedLogger` will be removed in Ray 2.7.
+  return UnifiedLogger(config, logdir, loggers=None)
+/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/tune/logger/unified.py:53: RayDeprecationWarning: This API is depreca
+ted and may be removed in future Ray releases. You could suppress this warning by setting env variable PYTHONWARNINGS="ignore::DeprecationWarnin
+g"
+The `JsonLogger interface is deprecated in favor of the `ray.tune.json.JsonLoggerCallback` interface and will be removed in Ray 2.7.
+  self._loggers.append(cls(self.config, self.logdir, self.trial))
+/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/tune/logger/unified.py:53: RayDeprecationWarning: This API is depreca
+ted and may be removed in future Ray releases. You could suppress this warning by setting env variable PYTHONWARNINGS="ignore::DeprecationWarnin
+g"
+The `CSVLogger interface is deprecated in favor of the `ray.tune.csv.CSVLoggerCallback` interface and will be removed in Ray 2.7.
+  self._loggers.append(cls(self.config, self.logdir, self.trial))
+/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/tune/logger/unified.py:53: RayDeprecationWarning: This API is depreca
+ted and may be removed in future Ray releases. You could suppress this warning by setting env variable PYTHONWARNINGS="ignore::DeprecationWarnin
+g"
+The `TBXLogger interface is deprecated in favor of the `ray.tune.tensorboardx.TBXLoggerCallback` interface and will be removed in Ray 2.7.
+  self._loggers.append(cls(self.config, self.logdir, self.trial))
+[2026-05-10 09:22:23,490 E 88556 88556] core_worker.cc:2232: Actor with class name: 'SingleAgentEnvRunner' and ID: '0da82fd184a3b6b718c99b790100
+0000' has constructor arguments in the object store and max_restarts > 0. If the arguments in the object store go out of scope or are lost, the
+actor restart will fail. See https://github.com/ray-project/ray/issues/53727 for more details.
+(SingleAgentEnvRunner pid=89928) DeprecationWarning: `RLModule(config=[RLModuleConfig object])` has been deprecated. Use `RLModule(observation_s
+pace=.., action_space=.., inference_only=.., model_config=.., catalog_class=..)` instead. This will raise an error in the future!
+2026-05-10 09:22:25,954 WARNING rl_module.py:463 -- DeprecationWarning: `RLModule(config=[RLModuleConfig object])` has been deprecated. Use `RLM
+odule(observation_space=.., action_space=.., inference_only=.., model_config=.., catalog_class=..)` instead. This will raise an error in the fut
+ure!
+2026-05-10 09:22:26,685 WARNING util.py:62 -- Install gputil for GPU system monitoring.
+============================================================
+Starting Training
+============================================================
+Battle Format: gen8randombattlenogimmicks
+Total Timesteps: 4,000,000
+Workers: 8
+Batch Size: 8,192
+Model Hidden: 512
+============================================================
+MLflow run id: 661c220cde744c06a3b549dca837a628
+Applied stage 'league_training' | threshold=2.00 | mix={'historical': 0.8, 'self': 0.2}
+/home/sudome/DSPRO2-FS26-Pokemon_RL/src/training/trainer.py:492: UserWarning: The given NumPy array is not writable, and PyTorch does not suppor
+t non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data
+or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internall
+y at /pytorch/torch/csrc/utils/tensor_numpy.cpp:213.)
+  obs = torch.as_tensor(obs_sample["obs"], dtype=torch.float32)
+Iter 10 | Steps: 81,920 | Reward: 0.18 | Time: 0.08h
+(pid=88926) *** SIGSEGV received at time=1778405304 on cpu 9 ***
+(SingleAgentEnvRunner pid=89942) DeprecationWarning: `RLModule(config=[RLModuleConfig object])` has been deprecated. Use `RLModule(observation_s
+pace=.., action_space=.., inference_only=.., model_config=.., catalog_class=..)` instead. This will raise an error in the future! [repeated 7x a
+cross cluster] (Ray deduplicates logs by default. Set RAY_DEDUP_LOGS=0 to disable log deduplication, or see https://docs.ray.io/en/master/ray-ob
+servability/user-guides/configure-logging.html#log-deduplication for more options.)
+(pid=88926) PC: @     0x7fa60e060d82  (unknown)  EventTracker::RecordStart()
+(pid=88926)     @     0x7fa60f31fdf0  (unknown)  (unknown)
+(pid=88926)     @ 0x856c160d8d4c007d  (unknown)  (unknown)
+(pid=88926) [2026-05-10 09:28:24,631 E 88926 88926] logging.cc:474: *** SIGSEGV received at time=1778405304 on cpu 9 ***
+(pid=88926) [2026-05-10 09:28:24,631 E 88926 88926] logging.cc:474: PC: @     0x7fa60e060d82  (unknown)  EventTracker::RecordStart()
+(pid=88926) [2026-05-10 09:28:24,631 E 88926 88926] logging.cc:474:     @     0x7fa60f31fdf0  (unknown)  (unknown)
+(pid=88926) [2026-05-10 09:28:24,631 E 88926 88926] logging.cc:474:     @ 0x856c160d8d4c007d  (unknown)  (unknown)
+(pid=88926) Fatal Python error: Segmentation fault
+(pid=88926)
+(pid=88926) Stack (most recent call first):
+(pid=88926)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/_private/worker.py", line 1028 in main_loop
+(pid=88926)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/_private/workers/default_worker.py", line 323 in
+<module>
+(pid=88926)
+(pid=88926) Extension modules: msgpack._cmsgpack, psutil._psutil_linux, google._upb._message, charset_normalizer.md, charset_normalizer.cd, requ
+ests.packages.charset_normalizer.md, requests.packages.chardet.md, requests.packages.charset_normalizer.cd, requests.packages.chardet.cd, yaml._
+yaml, ray._raylet (total: 11)
+(pid=88916)
+(pid=88916)
+(pid=88917)
+(pid=88917)
+(pid=88923)
+(pid=88923)
+Checkpoint saved: /home/sudome/DSPRO2-FS26-Pokemon_RL/checkpoints/step_155648
+Iter 20 | Steps: 163,840 | Reward: 0.54 | Time: 0.16h
+(SingleAgentEnvRunner pid=89916) 2026-05-10 09:33:48,575        ERROR env_runner.py:282 -- RLlib SingleAgentEnvRunner: Environment step failed a
+nd 'config.restart_failed_sub_environments' is False. This env will not be recreated. Consider setting 'fault_tolerance(restart_failed_sub_envir
+onments=True)' in your AlgorithmConfig in order to automatically re-create and force-reset an env.The original error type: <class 'KeyError'>. '
+p1'
+(SingleAgentEnvRunner pid=89916) Traceback (most recent call last):
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/rllib/env/env_runner.py", li
+ne 261, in _try_env_step
+(SingleAgentEnvRunner pid=89916)     results = self.env.step(actions)
+(SingleAgentEnvRunner pid=89916)               ^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/gymnasium/wrappers/vector/dict_i
+nfo_to_list.py", line 82, in step
+(SingleAgentEnvRunner pid=89916)     observation, reward, terminated, truncated, infos = self.env.step(actions)
+(SingleAgentEnvRunner pid=89916)                                                         ^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/gymnasium/vector/sync_vector_env
+.py", line 265, in step
+(SingleAgentEnvRunner pid=89916)     ) = self.envs[i].step(action)
+(SingleAgentEnvRunner pid=89916)         ^^^^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/gymnasium/wrappers/common.py", l
+ine 393, in step
+(SingleAgentEnvRunner pid=89916)     return super().step(action)
+(SingleAgentEnvRunner pid=89916)            ^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/gymnasium/core.py", line 327, in
+ step
+(SingleAgentEnvRunner pid=89916)     return self.env.step(action)
+(SingleAgentEnvRunner pid=89916)            ^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/gymnasium/wrappers/common.py", l
+ine 285, in step
+(SingleAgentEnvRunner pid=89916)     return self.env.step(action)
+(SingleAgentEnvRunner pid=89916)            ^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/src/envs/battle_env.py", line 720, in step
+(SingleAgentEnvRunner pid=89916)     result = super().step(native_action)
+(SingleAgentEnvRunner pid=89916)              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/poke_env/environment/single_agen
+t_wrapper.py", line 64, in step
+(SingleAgentEnvRunner pid=89916)     obs, rewards, terms, truncs, infos = self.env.step(actions)
+(SingleAgentEnvRunner pid=89916)                                          ^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/poke_env/environment/env.py", li
+ne 352, in step
+(SingleAgentEnvRunner pid=89916)     term1, trunc1 = self.calc_term_trunc(battle1)
+(SingleAgentEnvRunner pid=89916)                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/poke_env/environment/env.py", li
+ne 652, in calc_term_trunc
+(SingleAgentEnvRunner pid=89916)     size = battle.team_size
+(SingleAgentEnvRunner pid=89916)            ^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/poke_env/battle/abstract_battle.
+py", line 1655, in team_size
+(SingleAgentEnvRunner pid=89916)     return self._team_size[self._player_role]
+(SingleAgentEnvRunner pid=89916)            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916) KeyError: 'p1'
+(SingleAgentEnvRunner pid=89916) 2026-05-10 09:33:48,578        ERROR actor_manager.py:186 -- Worker exception caught during `apply()`:
+(SingleAgentEnvRunner pid=89916) Traceback (most recent call last):
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/rllib/env/env_runner.py", li
+ne 261, in _try_env_step
+(SingleAgentEnvRunner pid=89916)     results = self.env.step(actions)
+(SingleAgentEnvRunner pid=89916)               ^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/gymnasium/wrappers/vector/dict_i
+nfo_to_list.py", line 82, in step
+(SingleAgentEnvRunner pid=89916)     observation, reward, terminated, truncated, infos = self.env.step(actions)
+(SingleAgentEnvRunner pid=89916)                                                         ^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/gymnasium/vector/sync_vector_env
+.py", line 265, in step
+(SingleAgentEnvRunner pid=89916)     ) = self.envs[i].step(action)
+(SingleAgentEnvRunner pid=89916)         ^^^^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/gymnasium/wrappers/common.py", l
+ine 393, in step
+(SingleAgentEnvRunner pid=89916)     return super().step(action)
+(SingleAgentEnvRunner pid=89916)            ^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/gymnasium/core.py", line 327, in
+ step
+(SingleAgentEnvRunner pid=89916)     return self.env.step(action)
+(SingleAgentEnvRunner pid=89916)            ^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/gymnasium/wrappers/common.py", l
+ine 285, in step
+(SingleAgentEnvRunner pid=89916)     return self.env.step(action)
+(SingleAgentEnvRunner pid=89916)            ^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/src/envs/battle_env.py", line 720, in step
+(SingleAgentEnvRunner pid=89916)     result = super().step(native_action)
+(SingleAgentEnvRunner pid=89916)              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/poke_env/environment/single_agen
+t_wrapper.py", line 64, in step
+(SingleAgentEnvRunner pid=89916)     obs, rewards, terms, truncs, infos = self.env.step(actions)
+(SingleAgentEnvRunner pid=89916)                                          ^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/poke_env/environment/env.py", li
+ne 352, in step
+(SingleAgentEnvRunner pid=89916)     term1, trunc1 = self.calc_term_trunc(battle1)
+(SingleAgentEnvRunner pid=89916)                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/poke_env/environment/env.py", li
+ne 652, in calc_term_trunc
+(SingleAgentEnvRunner pid=89916)     size = battle.team_size
+(SingleAgentEnvRunner pid=89916)            ^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/poke_env/battle/abstract_battle.
+py", line 1655, in team_size
+(SingleAgentEnvRunner pid=89916)     return self._team_size[self._player_role]
+(SingleAgentEnvRunner pid=89916)            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916) KeyError: 'p1'
+(SingleAgentEnvRunner pid=89916)
+(SingleAgentEnvRunner pid=89916) The above exception was the direct cause of the following exception:
+(SingleAgentEnvRunner pid=89916)
+(SingleAgentEnvRunner pid=89916) Traceback (most recent call last):
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/rllib/utils/actor_manager.py
+", line 182, in apply
+(SingleAgentEnvRunner pid=89916)     return func(self, *args, **kwargs)
+(SingleAgentEnvRunner pid=89916)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/rllib/execution/rollout_ops.
+py", line 111, in <lambda>
+(SingleAgentEnvRunner pid=89916)     else (lambda w: (w.sample(**random_action_kwargs), w.get_metrics()))
+(SingleAgentEnvRunner pid=89916)                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/util/tracing/tracing_helper.
+py", line 461, in _resume_span
+(SingleAgentEnvRunner pid=89916)     return method(self, *_args, **_kwargs)
+(SingleAgentEnvRunner pid=89916)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/rllib/env/single_agent_env_r
+unner.py", line 233, in sample
+(SingleAgentEnvRunner pid=89916)     samples = self._sample(
+(SingleAgentEnvRunner pid=89916)               ^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/util/tracing/tracing_helper.
+py", line 461, in _resume_span
+(SingleAgentEnvRunner pid=89916)     return method(self, *_args, **_kwargs)
+(SingleAgentEnvRunner pid=89916)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/rllib/env/single_agent_env_r
+unner.py", line 347, in _sample
+(SingleAgentEnvRunner pid=89916)     results = self._try_env_step(actions_for_env)
+(SingleAgentEnvRunner pid=89916)               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/util/tracing/tracing_helper.
+py", line 461, in _resume_span
+(SingleAgentEnvRunner pid=89916)     return method(self, *_args, **_kwargs)
+(SingleAgentEnvRunner pid=89916)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(SingleAgentEnvRunner pid=89916)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/rllib/env/env_runner.py", li
+ne 291, in _try_env_step
+(SingleAgentEnvRunner pid=89916)     raise RuntimeError from e
+(SingleAgentEnvRunner pid=89916) RuntimeError
+(pid=88923) *** SIGSEGV received at time=1778405304 on cpu 9 *** [repeated 3x across cluster]
+(pid=88923) PC: @     0x7f38bfc60d82  (unknown)  EventTracker::RecordStart() [repeated 3x across cluster]
+(pid=88923)     @ 0x856c160d8d4c007d  (unknown)  (unknown) [repeated 5x across cluster]
+(pid=88923) [2026-05-10 09:28:24,631 E 88923 88923] logging.cc:474: *** SIGSEGV received at time=1778405304 on cpu 9 *** [repeated 3x across clu
+ster]
+(pid=88923) [2026-05-10 09:28:24,631 E 88923 88923] logging.cc:474: PC: @     0x7f38bfc60d82  (unknown)  EventTracker::RecordStart() [repeated 3
+x across cluster]
+(pid=88923) [2026-05-10 09:28:24,632 E 88923 88923] logging.cc:474:     @ 0x856c160d8d4c007d  (unknown)  (unknown) [repeated 5x across cluster]
+(pid=88923) Fatal Python error: Segmentation fault [repeated 3x across cluster]
+(pid=88923) Stack (most recent call first): [repeated 2x across cluster]
+(pid=88923)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/_private/worker.py", line 1028 in main_loop [repe
+ated 2x across cluster]
+(pid=88923)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/_private/workers/default_worker.py", line 323 in
+<module> [repeated 2x across cluster]
+(pid=88923) Extension modules: msgpack._cmsgpack, psutil._psutil_linux, google._upb._message, charset_normalizer.md, charset_normalizer.cd, requ
+ests.packages.charset_normalizer.md, requests.packages.chardet.md, requests.packages.charset_normalizer.cd, requests.packages.chardet.cd, yaml._
+yaml, ray._raylet (total: 11) [repeated 3x across cluster]
+(raylet) A worker died or was killed while executing a task by an unexpected system error. To troubleshoot the problem, check the logs for the d
+ead worker. Lease ID: 0000000002e185d43be0c3e83b43611ebeae1f47dc20e39cb15897da8d82d946 Worker ID: e4e601822ab896f76255fd66ce35be21fbc7d08ef888c4
+15caf60f26 Node ID: ad42d8eca988f160ccc259aae80f754a7a5d3b71365c3d97c94bd667 Worker IP address: 10.20.20.58 Worker port: 40693 Worker PID: 89916
+ Worker exit type: SYSTEM_ERROR Worker exit detail: Worker exits unexpectedly. Worker exits with an exit code 1.
+(SingleAgentEnvRunner pid=92151) DeprecationWarning: `RLModule(config=[RLModuleConfig object])` has been deprecated. Use `RLModule(observation_s
+pace=.., action_space=.., inference_only=.., model_config=.., catalog_class=..)` instead. This will raise an error in the future!
+2026-05-10 09:35:00,604 ERROR actor_manager.py:973 -- Ray error (The actor 0da82fd184a3b6b718c99b7901000000 is unavailable: The actor is tempora
+rily unavailable: IOError: The actor was restarted. The task may or may not have been executed on the actor.), taking actor 1 out of service.
+2026-05-10 09:35:00,769 ERROR actor_manager.py:771 -- The actor 0da82fd184a3b6b718c99b7901000000 is unavailable: The actor is temporarily unavai
+lable: IOError: The actor was restarted. The task may or may not have been executed on the actor.
+NoneType: None
+
+Running validation 'benchmark' at step 210,944
+Benchmark vs random: 50 episodes (8 servers)
+Benchmark vs random_no_switch: 50 episodes (8 servers)
+Benchmark vs heuristic: 50 episodes (8 servers)
+==============================================================
+  VALIDATION SUMMARY — benchmark (step 210,944)
+==============================================================
+  vs heuristic           WR=  0.0% ( 50 eps) [--------------------] [0%–7%]
+  vs random              WR= 84.0% ( 50 eps) [################----] [71%–92%]
+  vs random_no_switch    WR= 32.0% ( 50 eps) [######--------------] [21%–46%]
+--------------------------------------------------------------
+  Overall WR              38.7% (150 eps)
+  Avg battle length      42.0 steps
+  Avg reward             -0.34
+  Skill score            0.293
+  Consistency            33.3%
+==============================================================
+2026-05-10 09:35:43,789 WARNING actor_manager.py:986 -- Bringing previously unhealthy, now-healthy actor 1 back into service.
+Iter 30 | Steps: 251,904 | Reward: 0.52 | Time: 0.26h
+Checkpoint saved: /home/sudome/DSPRO2-FS26-Pokemon_RL/checkpoints/step_309248
+Iter 40 | Steps: 333,824 | Reward: 0.64 | Time: 0.34h
+Iter 50 | Steps: 415,744 | Reward: 0.80 | Time: 0.42h
+
+Running validation 'benchmark' at step 415,744
+Benchmark vs random: 50 episodes (8 servers)
+Benchmark vs random_no_switch: 50 episodes (8 servers)
+Benchmark vs heuristic: 50 episodes (8 servers)
+==============================================================
+  VALIDATION SUMMARY — benchmark (step 415,744)
+==============================================================
+  vs heuristic           WR=  4.0% ( 50 eps) [--------------------] [1%–13%]
+  vs random              WR= 82.0% ( 50 eps) [################----] [69%–90%]
+  vs random_no_switch    WR= 28.0% ( 50 eps) [#####---------------] [17%–42%]
+--------------------------------------------------------------
+  Overall WR              38.0% (150 eps)
+  Avg battle length      42.8 steps
+  Avg reward             -0.42
+  Skill score            0.293
+  Consistency            33.3%
+==============================================================
+Checkpoint saved: /home/sudome/DSPRO2-FS26-Pokemon_RL/checkpoints/step_464896
+Iter 60 | Steps: 497,664 | Reward: 0.86 | Time: 0.50h
+Iter 70 | Steps: 579,584 | Reward: 0.77 | Time: 0.58h
+
+Running validation 'benchmark' at step 620,544
+Benchmark vs random: 50 episodes (8 servers)
+Benchmark vs random_no_switch: 50 episodes (8 servers)
+Benchmark vs heuristic: 50 episodes (8 servers)
+==============================================================
+  VALIDATION SUMMARY — benchmark (step 620,544)
+==============================================================
+  vs heuristic           WR=  2.0% ( 50 eps) [--------------------] [0%–10%]
+  vs random              WR= 74.0% ( 50 eps) [##############------] [60%–84%]
+  vs random_no_switch    WR= 40.0% ( 50 eps) [########------------] [28%–54%]
+--------------------------------------------------------------
+  Overall WR              38.7% (150 eps)
+  Avg battle length      42.4 steps
+  Avg reward             -0.27
+  Skill score            0.307
+  Consistency            33.3%
+==============================================================
+Checkpoint saved: /home/sudome/DSPRO2-FS26-Pokemon_RL/checkpoints/step_628736
+(SingleAgentEnvRunner pid=89950) *** SIGSEGV received at time=1778407290 on cpu 19 ***
+(SingleAgentEnvRunner pid=89950) PC: @     0x7f1a0c6cf897  (unknown)  (unknown)
+(SingleAgentEnvRunner pid=89950)     @     0x7f1a41ee8df0  (unknown)  (unknown)
+(SingleAgentEnvRunner pid=89950)     @     0x7f1a0c6cf35d  (unknown)  (unknown)
+(SingleAgentEnvRunner pid=89950)     @          0x143b4b0  (unknown)  (unknown)
+(SingleAgentEnvRunner pid=89950) [2026-05-10 10:01:30,809 E 89950 89950] logging.cc:474: *** SIGSEGV received at time=1778407290 on cpu 19 ***
+(SingleAgentEnvRunner pid=89950) [2026-05-10 10:01:30,810 E 89950 89950] logging.cc:474: PC: @     0x7f1a0c6cf897  (unknown)  (unknown)
+(SingleAgentEnvRunner pid=89950) [2026-05-10 10:01:30,810 E 89950 89950] logging.cc:474:     @     0x7f1a41ee8df0  (unknown)  (unknown)
+(SingleAgentEnvRunner pid=89950) [2026-05-10 10:01:30,810 E 89950 89950] logging.cc:474:     @     0x7f1a0c6cf35d  (unknown)  (unknown)
+(SingleAgentEnvRunner pid=89950) [2026-05-10 10:01:30,811 E 89950 89950] logging.cc:474:     @          0x143b4b0  (unknown)  (unknown)
+(SingleAgentEnvRunner pid=89950) Fatal Python error: Segmentation fault
+(SingleAgentEnvRunner pid=89950)
+(SingleAgentEnvRunner pid=89950) Stack (most recent call first):
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/tree/__init__.py", line 185 in i
+s_nested
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/tree/__init__.py", line 356 in u
+nflatten_as
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/tree/__init__.py", line 427 in m
+ap_structure
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/rllib/utils/numpy.py", line
+159 in convert_to_numpy
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/rllib/connectors/common/tens
+or_to_numpy.py", line 26 in __call__
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/rllib/connectors/connector_p
+ipeline_v2.py", line 123 in __call__
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/rllib/env/single_agent_env_r
+unner.py", line 329 in _sample
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/util/tracing/tracing_helper.
+py", line 461 in _resume_span
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/rllib/env/single_agent_env_r
+unner.py", line 233 in sample
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/util/tracing/tracing_helper.
+py", line 461 in _resume_span
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/rllib/execution/rollout_ops.
+py", line 111 in <lambda>
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/rllib/utils/actor_manager.py
+", line 182 in apply
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/util/tracing/tracing_helper.
+py", line 461 in _resume_span
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/_private/function_manager.py
+", line 704 in actor_method_executor
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/_private/worker.py", line 10
+28 in main_loop
+(SingleAgentEnvRunner pid=89950)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/ray/_private/workers/default_wor
+ker.py", line 323 in <module>
+(SingleAgentEnvRunner pid=89950)
+(SingleAgentEnvRunner pid=89950) Extension modules: msgpack._cmsgpack, psutil._psutil_linux, google._upb._message, charset_normalizer.md, charse
+t_normalizer.cd, requests.packages.charset_normalizer.md, requests.packages.chardet.md, requests.packages.charset_normalizer.cd, requests.packag
+es.chardet.cd, yaml._yaml, ray._raylet, numpy._core._multiarray_umath, numpy._core._multiarray_tests, numpy.linalg._umath_linalg, numpy.random._
+common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._mt19937, numpy.random.mtrand, numpy.random._philox, numpy.rand
+om._pcg64, numpy.random._sfc64, numpy.random._generator, torch._C, torch._C._dynamo.autograd_compiler, torch._C._dynamo.eval_frame, torch._C._dy
+namo.guards, torch._C._dynamo.utils, torch._C._fft, torch._C._linalg, torch._C._nested, torch._C._nn, torch._C._sparse, torch._C._special, lz4._
+version, lz4.frame._frame, pyarrow.lib, pandas._libs.tslibs.ccalendar, pandas._libs.tslibs.np_datetime, pandas._libs.tslibs.dtypes, pandas._libs
+.tslibs.base, pandas._libs.tslibs.nattype, pandas._libs.tslibs.timezones, pandas._libs.tslibs.fields, pandas._libs.tslibs.timedeltas, pandas._li
+bs.tslibs.tzconversion, pandas._libs.tslibs.timestamps, pandas._libs.properties, pandas._libs.tslibs.offsets, pandas._libs.tslibs.strptime, pand
+as._libs.tslibs.parsing, pandas._libs.tslibs.conversion, pandas._libs.tslibs.period, pandas._libs.tslibs.vectorized, pandas._libs.ops_dispatch,
+pandas._libs.missing, pandas._libs.hashtable, pandas._libs.algos, pandas._libs.interval, pandas._libs.lib, pyarrow._compute, pandas._libs.ops, p
+andas._libs.hashing, pandas._libs.arrays, pandas._libs.tslib, pandas._libs.sparse, pandas._libs.internals, pandas._libs.indexing, pandas._libs.i
+ndex, pandas._libs.writers, pandas._libs.join, pandas._libs.window.aggregations, pandas._libs.window.indexers, pandas._libs.reshape, pandas._lib
+s.groupby, pandas._libs.json, pandas._libs.parsers, pandas._libs.testing, pyarrow._fs, pyarrow._azurefs, pyarrow._hdfs, pyarrow._gcsfs, pyarrow.
+_s3fs, pyarrow._parquet, _cyutility, scipy._cyutility, scipy._lib._ccallback_c, pyarrow._json, websockets.speedups, scipy.sparse._sparsetools, _
+csparsetools, scipy.sparse._csparsetools (total: 92)
+(raylet) A worker died or was killed while executing a task by an unexpected system error. To troubleshoot the problem, check the logs for the d
+ead worker. Lease ID: 060000008756dc9f599c25ecb7345b52e50fd3f9c842afb3ac204c3bbde5ce60 Worker ID: 4c0fa5d6c2bad42361f77ff08194874db2dcab7a409e45
+56e30b802a Node ID: ad42d8eca988f160ccc259aae80f754a7a5d3b71365c3d97c94bd667 Worker IP address: 10.20.20.58 Worker port: 42257 Worker PID: 89950
+ Worker exit type: SYSTEM_ERROR Worker exit detail: Worker unexpectedly exits with a connection error code 2. End of file. Some common causes in
+clude: (1) the process was killed by the OOM killer due to high memory usage, (2) ray stop --force was called, or (3) the worker crashed unexpec
+tedly due to SIGSEGV or another unexpected error.
+(SingleAgentEnvRunner pid=96544) DeprecationWarning: `RLModule(config=[RLModuleConfig object])` has been deprecated. Use `RLModule(observation_s
+pace=.., action_space=.., inference_only=.., model_config=.., catalog_class=..)` instead. This will raise an error in the future!
+2026-05-10 10:01:42,343 ERROR actor_manager.py:973 -- Ray error (The actor c54d193bd507003048a969ff01000000 is unavailable: The actor is tempora
+rily unavailable: RpcError: RPC error: Socket closed rpc_code: 14. The task may or may not have been executed on the actor.), taking actor 7 out
+ of service.
+2026-05-10 10:01:42,344 ERROR actor_manager.py:771 -- The actor c54d193bd507003048a969ff01000000 is unavailable: The actor is temporarily unavai
+lable: RpcError: RPC error: Socket closed rpc_code: 14. The task may or may not have been executed on the actor.
+NoneType: None
+2026-05-10 10:02:10,554 WARNING actor_manager.py:986 -- Bringing previously unhealthy, now-healthy actor 7 back into service.
+Iter 80 | Steps: 667,648 | Reward: 0.93 | Time: 0.68h
+(SingleAgentEnvRunner pid=89936) PC: @          0x1a71ae3  (unknown)  deduce_unreachable.warm
+(SingleAgentEnvRunner pid=89936)     @     0x7f6a61a3edf0       3088  (unknown)
+(SingleAgentEnvRunner pid=89936)     @          0x185ec6e        192  gc_collect_main.llvm.10170185556295419886
+(SingleAgentEnvRunner pid=89936)     @          0x1a80743        592  _PyEval_EvalFrameDefault.warm
+(SingleAgentEnvRunner pid=89936)     @          0x18986d0         64  gen_send_ex2
+(SingleAgentEnvRunner pid=89936)     @           0x493472         80  task_step_impl
+(SingleAgentEnvRunner pid=89936)     @           0x493251         48  task_step
+(SingleAgentEnvRunner pid=89936)     @          0x1850f5c         96  _PyObject_MakeTpCall
+(SingleAgentEnvRunner pid=89936)     @           0x4769fa         64  context_run
+(SingleAgentEnvRunner pid=89936)     @          0x1823f7f         64  cfunction_vectorcall_FASTCALL_KEYWORDS.llvm.5950502214040627936
+(SingleAgentEnvRunner pid=89936)     @          0x181613e        592  _PyEval_EvalFrameDefault
+(SingleAgentEnvRunner pid=89936)     @          0x1810481        128  method_vectorcall.llvm.11688299926296837617
+(SingleAgentEnvRunner pid=89936)     @          0x196546a         48  thread_run
+(SingleAgentEnvRunner pid=89936)     @          0x19653a4         32  pythread_wrapper.llvm.6548628751070450120
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474: PC: @          0x1a71ae3  (unknown)  deduce_unreachable
+.warm
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474:     @     0x7f6a61a3edf0       3088  (unknown)
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474:     @          0x185ec6e        192  gc_collect_main.ll
+vm.10170185556295419886
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474:     @          0x1a80743        592  _PyEval_EvalFrameD
+efault.warm
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474:     @          0x18986d0         64  gen_send_ex2
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474:     @           0x493472         80  task_step_impl
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474:     @           0x493251         48  task_step
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474:     @          0x1850f5c         96  _PyObject_MakeTpCa
+ll
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474:     @           0x4769fa         64  context_run
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474:     @          0x1823f7f         64  cfunction_vectorca
+ll_FASTCALL_KEYWORDS.llvm.5950502214040627936
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474:     @          0x181613e        592  _PyEval_EvalFrameD
+efault
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474:     @          0x1810481        128  method_vectorcall.
+llvm.11688299926296837617
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474:     @          0x196546a         48  thread_run
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474:     @          0x19653a4         32  pythread_wrapper.l
+lvm.6548628751070450120
+(SingleAgentEnvRunner pid=89936)
+(SingleAgentEnvRunner pid=89936)   File "/home/sudome/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/copy.py", line 271
+in _reconstruct
+(SingleAgentEnvRunner pid=89936)   File "/home/sudome/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/copy.py", line 97 i
+n copy
+(SingleAgentEnvRunner pid=89936)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/poke_env/battle/observed_pokemon
+.py", line 101 in from_pokemon
+(SingleAgentEnvRunner pid=89936)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/poke_env/battle/abstract_battle.
+py", line 707 in parse_message
+(SingleAgentEnvRunner pid=89936)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/poke_env/player/player.py", line
+ 405 in _handle_battle_message
+(SingleAgentEnvRunner pid=89936)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/poke_env/ps_client/ps_client.py"
+, line 142 in _handle_message
+(SingleAgentEnvRunner pid=89936)   File "/home/sudome/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/events.py",
+ line 88 in _run
+(SingleAgentEnvRunner pid=89936)   File "/home/sudome/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/base_events
+.py", line 1999 in _run_once
+(SingleAgentEnvRunner pid=89936)   File "/home/sudome/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/base_events
+.py", line 645 in run_forever
+(SingleAgentEnvRunner pid=89936)   File "/home/sudome/DSPRO2-FS26-Pokemon_RL/.venv/lib/python3.12/site-packages/poke_env/concurrency.py", line 1
+1 in __run_loop
+(SingleAgentEnvRunner pid=89936)   File "/home/sudome/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/threading.py", line
+ 1012 in run
+(SingleAgentEnvRunner pid=89936)   File "/home/sudome/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/threading.py", line
+ 1075 in _bootstrap_inner
+(SingleAgentEnvRunner pid=89936)   File "/home/sudome/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/threading.py", line
+ 1032 in _bootstrap
+(SingleAgentEnvRunner pid=89936)
+(SingleAgentEnvRunner pid=89936) *** SIGSEGV received at time=1778407436 on cpu 7 ***
+(SingleAgentEnvRunner pid=89936)     @     0x7f6a61a91b7b  (unknown)  (unknown)
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474: *** SIGSEGV received at time=1778407436 on cpu 7 ***
+(SingleAgentEnvRunner pid=89936) [2026-05-10 10:03:56,076 E 89936 90389] logging.cc:474:     @     0x7f6a61a91b7b  (unknown)  (unknown)
+(SingleAgentEnvRunner pid=89936) Fatal Python error: Segmentation fault
+(SingleAgentEnvRunner pid=89936) Stack (most recent call first):
+(SingleAgentEnvRunner pid=89936) Extension modules: msgpack._cmsgpack, psutil._psutil_linux, google._upb._message, charset_normalizer.md, charse
+t_normalizer.cd, requests.packages.charset_normalizer.md, requests.packages.chardet.md, requests.packages.charset_normalizer.cd, requests.packag
+es.chardet.cd, yaml._yaml, ray._raylet, numpy._core._multiarray_umath, numpy._core._multiarray_tests, numpy.linalg._umath_linalg, numpy.random._
+common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._mt19937, numpy.random.mtrand, numpy.random._philox, numpy.rand
+om._pcg64, numpy.random._sfc64, numpy.random._generator, torch._C, torch._C._dynamo.autograd_compiler, torch._C._dynamo.eval_frame, torch._C._dy
+namo.guards, torch._C._dynamo.utils, torch._C._fft, torch._C._linalg, torch._C._nested, torch._C._nn, torch._C._sparse, torch._C._special, lz4._
+version, lz4.frame._frame, pyarrow.lib, pandas._libs.tslibs.ccalendar, pandas._libs.tslibs.np_datetime, pandas._libs.tslibs.dtypes, pandas._libs
+.tslibs.base, pandas._libs.tslibs.nattype, pandas._libs.tslibs.timezones, pandas._libs.tslibs.fields, pandas._libs.tslibs.timedeltas, pandas._li
+bs.tslibs.tzconversion, pandas._libs.tslibs.timestamps, pandas._libs.properties, pandas._libs.tslibs.offsets, pandas._libs.tslibs.strptime, pand
+as._libs.tslibs.parsing, pandas._libs.tslibs.conversion, pandas._libs.tslibs.period, pandas._libs.tslibs.vectorized, pandas._libs.ops_dispatch,
+pandas._libs.missing, pandas._libs.hashtable, pandas._libs.algos, pandas._libs.interval, pandas._libs.lib, pyarrow._compute, pandas._libs.ops, p
+andas._libs.hashing, pandas._libs.arrays, pandas._libs.tslib, pandas._libs.sparse, pandas._libs.internals, pandas._libs.indexing, pandas._libs.i
+ndex, pandas._libs.writers, pandas._libs.join, pandas._libs.window.aggregations, pandas._libs.window.indexers, pandas._libs.reshape, pandas._lib
+s.groupby, pandas._libs.json, pandas._libs.parsers, pandas._libs.testing, pyarrow._fs, pyarrow._azurefs, pyarrow._hdfs, pyarrow._gcsfs, pyarrow.
+_s3fs, pyarrow._parquet, _cyutility, scipy._cyutility, scipy._lib._ccallback_c, pyarrow._json, websockets.speedups, scipy.sparse._sparsetools, _
+csparsetools, scipy.sparse._csparsetools (total: 92)
+(raylet) A worker died or was killed while executing a task by an unexpected system error. To troubleshoot the problem, check the logs for the d
+ead worker. Lease ID: 040000001294f1bc97799fef65d332b5f25fbfa7c3a9db4748ea6d270c832c35 Worker ID: 06027894a999f7843ba8411eb32d958e7f4989a5aa97ab
+4042d7444f Node ID: ad42d8eca988f160ccc259aae80f754a7a5d3b71365c3d97c94bd667 Worker IP address: 10.20.20.58 Worker port: 34273 Worker PID: 89936
+ Worker exit type: SYSTEM_ERROR Worker exit detail: Worker unexpectedly exits with a connection error code 2. End of file. Some common causes in
+clude: (1) the process was killed by the OOM killer due to high memory usage, (2) ray stop --force was called, or (3) the worker crashed unexpec
+tedly due to SIGSEGV or another unexpected error.
+(SingleAgentEnvRunner pid=96847) DeprecationWarning: `RLModule(config=[RLModuleConfig object])` has been deprecated. Use `RLModule(observation_s
+pace=.., action_space=.., inference_only=.., model_config=.., catalog_class=..)` instead. This will raise an error in the future!
+2026-05-10 10:03:59,530 ERROR actor_manager.py:973 -- Ray error (The actor 0d6f945d0b3d71029b16780501000000 is unavailable: The actor is tempora
+rily unavailable: RpcError: RPC error: Socket closed rpc_code: 14. The task may or may not have been executed on the actor.), taking actor 5 out
+ of service.
+2026-05-10 10:03:59,533 ERROR actor_manager.py:771 -- The actor 0d6f945d0b3d71029b16780501000000 is unavailable: The actor is temporarily unavai
+lable: RpcError: RPC error: Socket closed rpc_code: 14. The task may or may not have been executed on the actor.
+NoneType: None
+2026-05-10 10:04:27,949 WARNING actor_manager.py:986 -- Bringing previously unhealthy, now-healthy actor 5 back into service.
+Iter 90 | Steps: 755,712 | Reward: 0.66 | Time: 0.76h
+Checkpoint saved: /home/sudome/DSPRO2-FS26-Pokemon_RL/checkpoints/step_780288
+
+Running validation 'benchmark' at step 821,248
+Benchmark vs random: 50 episodes (8 servers)
+Benchmark vs random_no_switch: 50 episodes (8 servers)
+Benchmark vs heuristic: 50 episodes (8 servers)
+==============================================================
+  VALIDATION SUMMARY — benchmark (step 821,248)
+==============================================================
+  vs heuristic           WR=  8.0% ( 50 eps) [#-------------------] [3%–19%]
+  vs random              WR= 80.0% ( 50 eps) [################----] [67%–89%]
+  vs random_no_switch    WR= 36.0% ( 50 eps) [#######-------------] [24%–50%]
+--------------------------------------------------------------
+  Overall WR              41.3% (150 eps)
+  Avg battle length      41.9 steps
+  Avg reward             -0.30
+  Skill score            0.333
+  Consistency            33.3%
+==============================================================
+Iter 100 | Steps: 837,632 | Reward: 0.73 | Time: 0.85h
+

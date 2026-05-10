@@ -35,8 +35,8 @@ def main():
         "--preset",
         type=str,
         default="standard", 
-        choices=["quick", "standard", "memory_safe", "optimal", "large", "mav"],
-        help="Configuration preset (default: mav)",
+        choices=["quick", "standard", "memory_safe", "optimal", "large", "mav", "pure_league_play"],
+        help="Configuration preset (default: standard)",
     )
     
     # Timesteps
