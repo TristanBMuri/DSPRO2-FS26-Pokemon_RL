@@ -492,65 +492,70 @@ def get_config(preset: str = "standard") -> TrainingConfig:
             ),
         ),
         "pure_league_play": TrainingConfig(
+            total_timesteps=20_000_000,
             env=EnvironmentConfig(
                 player_team_path=None,
-                num_workers=8,
+                num_workers=6,
                 num_envs_per_worker=1, 
-                num_servers=8,
+                num_servers=6,
                 start_port=8000,
             ),
             model=ModelConfig(
-                num_transformer_layers=1, 
+                num_transformer_layers=2, 
             ),
             ppo=PPOConfig(
+                gamma=0.995,
                 train_batch_size=4096,
-                sgd_minibatch_size=512,
+                sgd_minibatch_size=1024,
+                clip_param=0.2,
             ),
             curriculum=CurriculumConfig(
                 enabled=True,
-                rolling_window_episodes=500, # Looks at the last 500 games
-                min_episodes_before_promotion=2000, # Give it time to settle
+                rolling_window_episodes=400,
+                min_episodes_before_promotion=2500,
                 stages=[
-                    # STAGE 1: The Basics (40% Random with switches, 60% No-Switch)
+                    # STAGE 1: Warmup (Easier promotion to avoid the plateau)
                     CurriculumStageConfig(
                         name="warmup_basics",
-                        promote_at_win_rate=0.75,  # Advance when it wins 75% of games
+                        promote_at_win_rate=0.55,  # Graduation is much easier now
                         min_samples_for_promotion=500,
-                        opponent_mix={"random": 0.4, "random_no_switch": 0.6},
+                        opponent_mix={"random": 0.3, "random_no_switch": 0.6, "heuristic": 0.1},
                         reward_config=RewardConfig(
                             victory_reward=10.0,
                             defeat_penalty=-10.0,
-                            hp_value_weight=3.0, # High reward for dealing damage early on
-                            action_quality_weight=0.3,
+                            hp_value_weight=1.3,
+                            action_quality_weight=0.2,
                         )
                     ),
                     
-                    # STAGE 2: Tactics (Introduce Heuristics and early Self-Play)
+                    # STAGE 2: The Tactical "Grind"
                     CurriculumStageConfig(
                         name="heuristic_tactics",
-                        promote_at_win_rate=0.65, # Advance when it beats this mix 65% of the time
-                        min_samples_for_promotion=500,
-                        opponent_mix={"heuristic": 0.6, "self": 0.4},
+                        promote_at_win_rate=0.60, 
+                        min_samples_for_promotion=1000,
+                        opponent_mix={"random_no_switch": 0.2, "heuristic": 0.45, "self": 0.2, "historical": 0.15},
                         reward_config=RewardConfig(
-                            victory_reward=10.0,
-                            defeat_penalty=-10.0,
-                            hp_value_weight=1.5, # Lower damage reward, focus more on winning
+                            victory_reward=12.0,
+                            defeat_penalty=-12.0,
+                            hp_value_weight=0.5,
                             action_quality_weight=0.1,
                         )
                     ),
                     
-                    # STAGE 3: Pure League Play (10% no-switch, 25% heuristic, 65% self-play)
+                    # STAGE 3: Final League Training
                     CurriculumStageConfig(
                         name="league_training",
-                        promote_at_win_rate=2.0,  # 2.0 locks it in this stage forever
+                        promote_at_win_rate=2.0,
                         min_samples_for_promotion=999999,
-                        # Note: We use "historical" instead of "self" for the bulk of it 
-                        # so it fights past versions of itself, avoiding strategy collapse.
-                        opponent_mix={"random_no_switch": 0.10, "heuristic": 0.25, "historical": 0.50, "self": 0.15}, 
+                        opponent_mix={
+                            "heuristic": 0.4, 
+                            "historical": 0.4, 
+                            "self": 0.2
+                        }, 
                         reward_config=RewardConfig(
-                            victory_reward=15.0, # Winning is all that matters now
+                            victory_reward=15.0,
                             defeat_penalty=-15.0,
-                            hp_value_weight=0.5, # Minimal hand-holding
+                            hp_value_weight=0.1,
                             action_quality_weight=0.0,
                         )
                     )

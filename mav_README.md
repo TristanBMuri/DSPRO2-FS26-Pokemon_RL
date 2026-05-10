@@ -33,3 +33,14 @@ SAVE_LEAGUE_HISTORY=1 uv run --active train_battler.py \
   # 5. Wait 60 seconds
   sleep 60
   done
+
+cat train_battler.py 
+cat src/config/TM_optimal_config.py 
+cat src/training/historical_self_player.py
+cat src/training/self_play_player.py
+cat src/training/callbacks.py
+cat src/training/curriculum.py
+
+tree src/
+tree scripts/
+tree data/
