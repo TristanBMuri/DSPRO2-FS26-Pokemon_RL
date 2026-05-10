@@ -98,7 +98,7 @@ class EnvironmentConfig:
     player_team_path: Optional[str] = "data/teams/player_team_2.txt"
 
     # MLflow experiment name when player_team_path is set (fixed-team training).
-    mlflow_experiment_fixed_team: str = "Pokemon_RL_Battler_FixedTeam"
+    mlflow_experiment_fixed_team: str = "Pokemon_RL_Marvin_Fixed"
 
     # Server settings
     showdown_host: str = "localhost"
@@ -312,7 +312,7 @@ class TrainingConfig:
     """Main training configuration."""
 
     # Duration
-    total_timesteps: int = 10_000_000
+    total_timesteps: int = 2_000_000
 
     # Checkpointing
     checkpoint_dir: str = "checkpoints"
@@ -388,7 +388,7 @@ class TrainingConfig:
         }
 
 
-DEFAULT_MLFLOW_EXPERIMENT = "Pokemon_RL_Battler"
+DEFAULT_MLFLOW_EXPERIMENT = "Pokemon_RL_Marvin_Random"
 
 
 def resolve_mlflow_experiment_name(config: TrainingConfig) -> str:
@@ -473,6 +473,21 @@ def get_config(preset: str = "standard") -> TrainingConfig:
             ),
             ppo=PPOConfig(
                 train_batch_size=16384,
+                sgd_minibatch_size=512,
+            ),
+        ),
+        "mav": TrainingConfig(
+            env=EnvironmentConfig(
+                num_workers=8,
+                num_envs_per_worker=2,
+                num_servers=8,
+                start_port=8000,
+            ),
+            model=ModelConfig(
+                num_transformer_layers=1,
+            ),
+            ppo=PPOConfig(
+                train_batch_size=4096,
                 sgd_minibatch_size=512,
             ),
         ),

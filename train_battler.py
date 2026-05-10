@@ -18,9 +18,11 @@ Requirements:
 import argparse
 import mlflow
 from dotenv import load_dotenv, find_dotenv
-
+import os
 
 def main():
+    os.environ["RAY_GC_COLLECT_UNIT_INTERVAL"] = "0"
+    
     load_dotenv(find_dotenv())
 
     parser = argparse.ArgumentParser(
@@ -32,11 +34,11 @@ def main():
     parser.add_argument(
         "--preset",
         type=str,
-        default="standard",
-        choices=["quick", "standard", "memory_safe", "optimal", "large"],
-        help="Configuration preset (default: standard)",
+        default="standard", 
+        choices=["quick", "standard", "memory_safe", "optimal", "large", "mav"],
+        help="Configuration preset (default: mav)",
     )
-
+    
     # Timesteps
     parser.add_argument(
         "--timesteps", type=int, default=None, help="Override total timesteps"
