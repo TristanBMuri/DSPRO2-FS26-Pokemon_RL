@@ -1,61 +1,122 @@
 import random
+import time
+import gc
 from pathlib import Path
+from typing import Dict, Any, Optional
+
 import torch
-from poke_env.player import Player
+from poke_env.player import RandomPlayer
+from poke_env.battle.abstract_battle import AbstractBattle
 
-class HistoricalSelfPlayer(Player):
-    def __init__(self, *args, model=None, weights_path=None, **kwargs):
+# Import your SelfPlayPlayer to inherit its inference engine
+from src.training.self_play_player import SelfPlayPlayer
 
-        kwargs.pop("model_config_dict", None)
-        kwargs.pop("env_config", None)
+class HistoricalSelfPlayer(SelfPlayPlayer):
+    """
+    Self-play opponent that selects a historical checkpoint 
+    and uses it for a batch of battles to simulate league play.
+    """
+    def __init__(
+        self, 
+        model_config_dict: Dict[str, Any], 
+        weights_path: Optional[str] = None, 
+        **kwargs
+    ):
+        super().__init__(
+            model_config_dict=model_config_dict, 
+            weights_path=weights_path, 
+            **kwargs
+        )
+        # MEMORY LEAK FIX 1: Force this specific opponent model strictly to the CPU.
+        # This keeps the VRAM entirely free for the main RLlib trainer.
+        self.model.to("cpu")
         
-        super().__init__(*args, **kwargs)
-        self.model = model
-        self._weights_path = weights_path
         self._current_brain_path = None
-        self._load_count = 0
-        self._diag = {"weight_load_count": 0}
-        self._lstm_states = {}
+        self._battles_played_with_current = 0
+
+    def _try_load_weights(self) -> None:
+        # Override the base class's per-turn mtime check.
+        pass
 
     def _load_random_historical_brain(self) -> None:
+        """Picks a random .pt file, strictly avoiding files currently being written."""
         if not self._weights_path:
             return
             
         base_dir = Path(self._weights_path).parent
         history_dir = base_dir / "history"
-        target_path = None
         
+        pt_files = []
+        current_time = time.time()
+        
+        # ZIP ERROR FIX 1: Only look at files that are at least 10 seconds old.
+        # This makes it mathematically impossible to load a half-written file.
         if history_dir.exists() and history_dir.is_dir():
-            pt_files = list(history_dir.glob("*.pt"))
-            if pt_files:
-                target_path = random.choice(pt_files)
-        
-        if target_path is None:
+            for f in history_dir.glob("*.pt"):
+                try:
+                    if current_time - f.stat().st_mtime > 10.0:
+                        pt_files.append(f)
+                except OSError:
+                    pass
+                    
+        # Fallback to the active weights if history is empty
+        if not pt_files:
             target_path = Path(self._weights_path)
-            
-        if not target_path.exists():
+            try:
+                if target_path.exists() and (current_time - target_path.stat().st_mtime > 10.0):
+                    pt_files = [target_path]
+            except OSError:
+                pass
+                
+        if not pt_files:
+            return 
+
+        target_path = random.choice(pt_files)
+        
+        if target_path == self._current_brain_path:
+            self._battles_played_with_current = 0
             return
             
-        if target_path != self._current_brain_path:
-            try:
-                state_dict = torch.load(target_path, map_location="cpu", weights_only=True)
-                
-                self.model.load_state_dict(state_dict, strict=True)
-                
-                del state_dict
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-                
-                self._lstm_states.clear()
-                self._load_count += 1
-                self._diag["weight_load_count"] += 1
-                self._current_brain_path = target_path
-            except Exception:
-                pass
+        try:
+            state_dict = torch.load(target_path, map_location="cpu", weights_only=True)
+            self.model.load_state_dict(state_dict, strict=True)
+            
+            self._lstm_states.clear()
+            self._load_count += 1
+            self._diag["weight_load_count"] += 1
+            self._current_brain_path = target_path
+            self._battles_played_with_current = 0  
+            
+            # MEMORY LEAK FIX 2: Explicitly sever the reference to the loaded tensors 
+            # and force Python's garbage collector to run instantly.
+            del state_dict
+            gc.collect()
+            
+        except Exception:
+            pass
 
-    def choose_move(self, battle):
+    def choose_move(self, battle: AbstractBattle):
+        # Clean up memory
+        if getattr(battle, "finished", False) or battle.won or battle.lost:
+            self._lstm_states.pop(battle.battle_tag, None)
+
+        if len(self._lstm_states) > 50:
+            self._lstm_states.clear()
+
+        # If it's a new battle
         if battle.battle_tag not in self._lstm_states:
-            self._load_random_historical_brain()
+            self._battles_played_with_current += 1
+            
+            # ZIP ERROR FIX 2 (I/O Shield): Don't swap brains every single battle. 
+            # Play 20 matches with a historical model before swapping. 
+            # This drops disk usage by 95% and stops the stuttering.
+            if self._current_brain_path is None or self._battles_played_with_current > 20:
+                self._load_random_historical_brain()
+                
             self._lstm_states[battle.battle_tag] = None
 
-        return self.choose_random_move(battle)
+        try:
+            return self._inference_move(battle)
+        except Exception:
+            self._diag["fallback_count"] += 1
+            return RandomPlayer.choose_random_singles_move(battle)

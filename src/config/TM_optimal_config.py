@@ -59,11 +59,11 @@ class PPOConfig:
     lr: float = 0.0002
 
     # Discount and GAE
-    gamma: float = 0.97
+    gamma: float = 0.99
     lambda_: float = 0.87
 
     # PPO clipping
-    clip_param: float = 0.08
+    clip_param: float = 0.2
 
     # Entropy bonus (exploration)
     entropy_coeff: float = 0.013
@@ -508,13 +508,51 @@ def get_config(preset: str = "standard") -> TrainingConfig:
             ),
             curriculum=CurriculumConfig(
                 enabled=True,
+                rolling_window_episodes=500, # Looks at the last 500 games
+                min_episodes_before_promotion=2000, # Give it time to settle
                 stages=[
+                    # STAGE 1: The Basics (40% Random with switches, 60% No-Switch)
+                    CurriculumStageConfig(
+                        name="warmup_basics",
+                        promote_at_win_rate=0.75,  # Advance when it wins 75% of games
+                        min_samples_for_promotion=500,
+                        opponent_mix={"random": 0.4, "random_no_switch": 0.6},
+                        reward_config=RewardConfig(
+                            victory_reward=10.0,
+                            defeat_penalty=-10.0,
+                            hp_value_weight=3.0, # High reward for dealing damage early on
+                            action_quality_weight=0.3,
+                        )
+                    ),
+                    
+                    # STAGE 2: Tactics (Introduce Heuristics and early Self-Play)
+                    CurriculumStageConfig(
+                        name="heuristic_tactics",
+                        promote_at_win_rate=0.65, # Advance when it beats this mix 65% of the time
+                        min_samples_for_promotion=500,
+                        opponent_mix={"heuristic": 0.6, "self": 0.4},
+                        reward_config=RewardConfig(
+                            victory_reward=10.0,
+                            defeat_penalty=-10.0,
+                            hp_value_weight=1.5, # Lower damage reward, focus more on winning
+                            action_quality_weight=0.1,
+                        )
+                    ),
+                    
+                    # STAGE 3: Pure League Play (10% no-switch, 25% heuristic, 65% self-play)
                     CurriculumStageConfig(
                         name="league_training",
-                        promote_at_win_rate=2.0,  
+                        promote_at_win_rate=2.0,  # 2.0 locks it in this stage forever
                         min_samples_for_promotion=999999,
-                        opponent_mix={"historical": 0.8, "self": 0.2}, 
-                        reward_config=RewardConfig() 
+                        # Note: We use "historical" instead of "self" for the bulk of it 
+                        # so it fights past versions of itself, avoiding strategy collapse.
+                        opponent_mix={"random_no_switch": 0.10, "heuristic": 0.25, "historical": 0.50, "self": 0.15}, 
+                        reward_config=RewardConfig(
+                            victory_reward=15.0, # Winning is all that matters now
+                            defeat_penalty=-15.0,
+                            hp_value_weight=0.5, # Minimal hand-holding
+                            action_quality_weight=0.0,
+                        )
                     )
                 ]
             )
