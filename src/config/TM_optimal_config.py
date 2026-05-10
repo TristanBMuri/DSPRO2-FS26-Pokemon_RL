@@ -312,7 +312,7 @@ class TrainingConfig:
     """Main training configuration."""
 
     # Duration
-    total_timesteps: int = 4_000_000
+    total_timesteps: int = 6_000_000
 
     # Checkpointing
     checkpoint_dir: str = "checkpoints"
@@ -503,7 +503,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                 num_transformer_layers=1, 
             ),
             ppo=PPOConfig(
-                train_batch_size=8192,
+                train_batch_size=4096,
                 sgd_minibatch_size=512,
             ),
             curriculum=CurriculumConfig(

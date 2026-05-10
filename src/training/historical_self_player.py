@@ -1,17 +1,21 @@
 import random
-import torch
 from pathlib import Path
-from src.training.self_play_player import SelfPlayPlayer 
+import torch
+from poke_env.player import Player
 
-class HistoricalSelfPlayer(SelfPlayPlayer):
-    """A self-play bot that randomly loads a past checkpoint at the start of every battle."""
-    
-    def __init__(self, *args, **kwargs):
-        self._current_brain_path = None
+class HistoricalSelfPlayer(Player):
+    def __init__(self, *args, model=None, weights_path=None, **kwargs):
+
+        kwargs.pop("model_config_dict", None)
+        kwargs.pop("env_config", None)
+        
         super().__init__(*args, **kwargs)
-
-    def _try_load_weights(self) -> None:
-        pass
+        self.model = model
+        self._weights_path = weights_path
+        self._current_brain_path = None
+        self._load_count = 0
+        self._diag = {"weight_load_count": 0}
+        self._lstm_states = {}
 
     def _load_random_historical_brain(self) -> None:
         if not self._weights_path:
@@ -19,7 +23,6 @@ class HistoricalSelfPlayer(SelfPlayPlayer):
             
         base_dir = Path(self._weights_path).parent
         history_dir = base_dir / "history"
-        
         target_path = None
         
         if history_dir.exists() and history_dir.is_dir():
@@ -27,29 +30,32 @@ class HistoricalSelfPlayer(SelfPlayPlayer):
             if pt_files:
                 target_path = random.choice(pt_files)
         
-        # Fallback to the latest file if history is empty
         if target_path is None:
             target_path = Path(self._weights_path)
             
         if not target_path.exists():
             return
             
-        # Only reload PyTorch state if we picked a different brain than last time
         if target_path != self._current_brain_path:
             try:
                 state_dict = torch.load(target_path, map_location="cpu", weights_only=True)
+                
                 self.model.load_state_dict(state_dict, strict=True)
+                
+                del state_dict
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                
                 self._lstm_states.clear()
                 self._load_count += 1
                 self._diag["weight_load_count"] += 1
                 self._current_brain_path = target_path
-            except Exception as exc:
-                pass # Just keep using the current brain if it fails
+            except Exception:
+                pass
 
     def choose_move(self, battle):
-        # If it's the start of a new battle (turn 1), pick a new brain!
-        if getattr(battle, "turn", 1) <= 1 or self._current_brain_path is None:
+        if battle.battle_tag not in self._lstm_states:
             self._load_random_historical_brain()
-            
-        # Run inference using the parent class logic
-        return super().choose_move(battle)
+            self._lstm_states[battle.battle_tag] = None
+
+        return self.choose_random_move(battle)
