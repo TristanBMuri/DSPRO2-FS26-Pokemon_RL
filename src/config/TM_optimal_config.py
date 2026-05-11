@@ -505,7 +505,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
             ),
             ppo=PPOConfig(
                 gamma=0.99,
-                train_batch_size=4096,
+                train_batch_size=16384,
                 sgd_minibatch_size=1024,
                 clip_param=0.2,
             ),
@@ -523,8 +523,8 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                         reward_config=RewardConfig(
                             victory_reward=10.0,
                             defeat_penalty=-10.0,
-                            hp_value_weight=0.3,
-                            action_quality_weight=0.2,
+                            hp_value_weight=0.1,
+                            action_quality_weight=0.0,
                         )
                     ),
                     
@@ -535,10 +535,10 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                         min_samples_for_promotion=1000,
                         opponent_mix={"random_no_switch": 0.2, "heuristic": 0.45, "self": 0.2, "historical": 0.15},
                         reward_config=RewardConfig(
-                            victory_reward=12.0,
-                            defeat_penalty=-12.0,
-                            hp_value_weight=0.1,
-                            action_quality_weight=0.1,
+                            victory_reward=10.0,
+                            defeat_penalty=-10.0,
+                            hp_value_weight=0.0,
+                            action_quality_weight=0.0,
                         )
                     ),
                     
@@ -553,8 +553,8 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                             "self": 0.2
                         }, 
                         reward_config=RewardConfig(
-                            victory_reward=15.0,
-                            defeat_penalty=-15.0,
+                            victory_reward=10.0,
+                            defeat_penalty=-10.0,
                             hp_value_weight=0.0,
                             action_quality_weight=0.0,
                         )
