@@ -21,8 +21,6 @@ from dotenv import load_dotenv, find_dotenv
 import os
 
 def main():
-    os.environ["RAY_GC_COLLECT_UNIT_INTERVAL"] = "0"
-    
     load_dotenv(find_dotenv())
 
     parser = argparse.ArgumentParser(

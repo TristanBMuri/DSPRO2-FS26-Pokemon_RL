@@ -207,7 +207,7 @@ class SelfPlayPlayer(Player):
                 known_moves = list(active.moves.values())
                 slot = action - 4
                 if slot < len(known_moves):
-                    return self.create_order(known_moves[slot])
+                    return self.create_order(known_moves[slot], mega=True)
 
         # Switch actions (compressed 8-13)
         elif action in COMPRESSED_SWITCH_ACTIONS:

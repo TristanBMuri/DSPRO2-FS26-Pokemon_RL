@@ -185,13 +185,15 @@ class PokemonBattleEnv(SinglesEnv):
         elif battle.won or battle.lost:
             # Refresh terminal marker while reward callbacks are still firing.
             self._completed_battle_steps[battle_key] = self._env_step_counter
+            self._reward_buffer.pop(battle_key, None)
 
         return self._compute_configured_delta_reward(battle)
 
     def _compute_configured_delta_reward(self, battle: AbstractBattle) -> float:
         """Poke-env style delta reward with matchup shaping."""
-        if battle not in self._reward_buffer:
-            self._reward_buffer[battle] = 0.0
+        battle_key = getattr(battle, "battle_tag", f"battle_{id(battle)}")
+        if battle_key not in self._reward_buffer:
+            self._reward_buffer[battle_key] = 0.0
 
         current_value = 0.0
         hp_value = self.reward_config.hp_value_weight

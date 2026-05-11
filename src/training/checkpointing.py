@@ -36,16 +36,13 @@ class CheckpointManager:
             latest_pt = self.checkpoint_dir / "selfplay_latest.pt"
             history_dir = self.checkpoint_dir / "history"
             
-            def async_archive():
-                try:
-                    if latest_pt.exists():
-                        history_dir.mkdir(exist_ok=True)
-                        history_file = history_dir / f"selfplay_step_{step}.pt"
-                        shutil.copy2(latest_pt, history_file)
-                except Exception as e:
-                    print(f"Archiver failed silently: {e}")
-
-            threading.Thread(target=async_archive, daemon=True).start()
+            try:
+                if latest_pt.exists():
+                    history_dir.mkdir(exist_ok=True)
+                    history_file = history_dir / f"selfplay_step_{step}.pt"
+                    shutil.copy2(latest_pt, history_file)
+            except Exception as e:
+                print(f"Archiver failed: {e}")
 
         return checkpoint_path
 

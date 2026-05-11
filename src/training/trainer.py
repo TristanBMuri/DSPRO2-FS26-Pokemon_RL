@@ -313,7 +313,7 @@ class PokemonTrainer:
                     prev_wall_time = now
                     metrics.update(self.system_metrics.collect())
                     metrics.update(collect_env_memory_sentinels(self.algo))
-                    metrics.update(self._record_decision_diagnostics())
+                    # metrics.update(self._record_decision_diagnostics())
 
                     try:
                         mlflow.log_metrics(metrics, step=int(self.total_steps))
@@ -597,7 +597,8 @@ class PokemonTrainer:
     def _save_checkpoint(self) -> Path:
         ckpt_path = self.checkpoint_mgr.save_checkpoint(self.algo, self.total_steps)
         self._last_checkpoint_step = self.total_steps
-        self._export_selfplay_weights()
+        if self.iteration % 10 == 0:
+            self._export_selfplay_weights()
         print(f"Checkpoint saved: {ckpt_path}")
         return ckpt_path
 
