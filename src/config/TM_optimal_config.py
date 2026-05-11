@@ -66,7 +66,7 @@ class PPOConfig:
     clip_param: float = 0.2
 
     # Entropy bonus (exploration)
-    entropy_coeff: float = 0.013
+    entropy_coeff: float = 0.03
 
     # Value function
     vf_loss_coeff: float = 0.5
@@ -523,7 +523,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                         reward_config=RewardConfig(
                             victory_reward=10.0,
                             defeat_penalty=-10.0,
-                            hp_value_weight=1.3,
+                            hp_value_weight=0.3,
                             action_quality_weight=0.2,
                         )
                     ),
@@ -537,7 +537,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                         reward_config=RewardConfig(
                             victory_reward=12.0,
                             defeat_penalty=-12.0,
-                            hp_value_weight=0.5,
+                            hp_value_weight=0.1,
                             action_quality_weight=0.1,
                         )
                     ),
@@ -555,7 +555,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                         reward_config=RewardConfig(
                             victory_reward=15.0,
                             defeat_penalty=-15.0,
-                            hp_value_weight=0.1,
+                            hp_value_weight=0.0,
                             action_quality_weight=0.0,
                         )
                     )
