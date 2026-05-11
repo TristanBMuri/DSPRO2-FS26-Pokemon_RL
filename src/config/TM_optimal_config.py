@@ -505,7 +505,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
             ),
             ppo=PPOConfig(
                 gamma=0.99,
-                train_batch_size=16384,
+                train_batch_size=4096,
                 sgd_minibatch_size=1024,
                 clip_param=0.2,
             ),
