@@ -44,3 +44,8 @@ cat src/training/curriculum.py
 tree src/
 tree scripts/
 tree data/
+
+
+git clone https://github.com/TristanBMuri/DSPRO2-FS26-Pokemon_RL.git
+cd DSPRO2-FS26-Pokemon_RL
+git checkout marv-dev
