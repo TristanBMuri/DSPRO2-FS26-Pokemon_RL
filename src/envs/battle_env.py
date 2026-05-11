@@ -187,7 +187,7 @@ class PokemonBattleEnv(SinglesEnv):
             self._completed_battle_steps[battle_key] = self._env_step_counter
             self._reward_buffer.pop(battle, None)
 
-        return self._compute_configured_delta_reward(battle)
+        return float(self._compute_configured_delta_reward(battle))
 
     def _compute_configured_delta_reward(self, battle: AbstractBattle) -> float:
         """Poke-env style delta reward with matchup shaping."""

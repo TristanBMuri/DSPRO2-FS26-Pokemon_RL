@@ -145,7 +145,7 @@ class RewardConfig:
 
     # Global reward scale: multiplies all rewards before returning to the agent.
     # Scales returns from ~[-15, +15] to ~[-1.5, +1.5], making value regression easier.
-    reward_scale: float = 0.05
+    reward_scale: float = 0.02
 
 
 @dataclass
@@ -504,7 +504,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                 num_transformer_layers=2, 
             ),
             ppo=PPOConfig(
-                gamma=0.995,
+                gamma=0.99,
                 train_batch_size=4096,
                 sgd_minibatch_size=1024,
                 clip_param=0.2,
