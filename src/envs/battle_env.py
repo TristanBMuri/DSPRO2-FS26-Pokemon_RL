@@ -121,11 +121,10 @@ class PokemonBattleEnv(SinglesEnv):
         obs_space = get_observation_space()
         self.observation_spaces = {agent: obs_space for agent in self.possible_agents}
     
-    def action_to_order(self, action: int, battle: AbstractBattle):
+    def action_to_order(self, action: int, battle: AbstractBattle, **kwargs):
         """
         Bypass poke-env's native integer mappings and dynamic arrays.
-        Map the compressed RL action directly to the absolute dictionary orders
-        so execution matches the embedding tokens exactly.
+        Map the compressed RL action directly to the absolute dictionary orders.
         """
         active = battle.active_pokemon
 
@@ -134,7 +133,8 @@ class PokemonBattleEnv(SinglesEnv):
             if active and active.moves:
                 known_moves = list(active.moves.values())
                 if action < len(known_moves):
-                    return self.agent.create_order(known_moves[action])
+                    # FIX: Use self.create_order, not self.agent.create_order
+                    return self.create_order(known_moves[action])
 
         # Gimmick actions (compressed 4-7)
         elif 4 <= action <= 7:
@@ -142,8 +142,8 @@ class PokemonBattleEnv(SinglesEnv):
                 known_moves = list(active.moves.values())
                 slot = action - 4
                 if slot < len(known_moves):
-                    # You can add logic here for z_move=True, dynamax=True, etc.
-                    return self.agent.create_order(known_moves[slot], mega=True) 
+                    # FIX: Use self.create_order, not self.agent.create_order
+                    return self.create_order(known_moves[slot], mega=True) 
 
         # Switch actions (compressed 8-13)
         elif 8 <= action <= 13:
@@ -151,9 +151,10 @@ class PokemonBattleEnv(SinglesEnv):
             team_list = list(battle.team.values())
             bench = [mon for mon in team_list if mon is not active]
             if switch_idx < len(bench):
-                return self.agent.create_order(bench[switch_idx])
+                # FIX: Use self.create_order, not self.agent.create_order
+                return self.create_order(bench[switch_idx])
 
-        # Absolute Fallback (should theoretically never be reached if mask is perfect)
+        # Absolute Fallback
         from poke_env.player import RandomPlayer
         self._fallback_events_current_episode += 1
         return RandomPlayer.choose_random_singles_move(battle)
