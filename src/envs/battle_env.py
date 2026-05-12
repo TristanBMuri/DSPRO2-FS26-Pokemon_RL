@@ -124,17 +124,22 @@ class PokemonBattleEnv(SinglesEnv):
     def action_to_order(self, action: int, battle: AbstractBattle, **kwargs):
         """
         Bypass poke-env's native integer mappings and dynamic arrays.
-        Map the compressed RL action directly to the absolute dictionary orders.
         """
         active = battle.active_pokemon
+        
+        # Safer access to the agent to satisfy Pylint and handle SinglesEnv structure
+        agent = getattr(self, "_player_role_to_agent", {}).get("agent0")
+        if agent is None:
+            # Fallback for initialization phases where agent might not be mapped yet
+            from poke_env.player import RandomPlayer as RP
+            return RP.choose_random_singles_move(battle)
 
         # Move actions (compressed 0-3)
         if 0 <= action <= 3:
             if active and active.moves:
                 known_moves = list(active.moves.values())
                 if action < len(known_moves):
-                    # FIX: Use self.create_order, not self.agent.create_order
-                    return self.create_order(known_moves[action])
+                    return agent.create_order(known_moves[action])
 
         # Gimmick actions (compressed 4-7)
         elif 4 <= action <= 7:
@@ -142,8 +147,7 @@ class PokemonBattleEnv(SinglesEnv):
                 known_moves = list(active.moves.values())
                 slot = action - 4
                 if slot < len(known_moves):
-                    # FIX: Use self.create_order, not self.agent.create_order
-                    return self.create_order(known_moves[slot], mega=True) 
+                    return agent.create_order(known_moves[slot], mega=True) 
 
         # Switch actions (compressed 8-13)
         elif 8 <= action <= 13:
@@ -151,13 +155,12 @@ class PokemonBattleEnv(SinglesEnv):
             team_list = list(battle.team.values())
             bench = [mon for mon in team_list if mon is not active]
             if switch_idx < len(bench):
-                # FIX: Use self.create_order, not self.agent.create_order
-                return self.create_order(bench[switch_idx])
+                return agent.create_order(bench[switch_idx])
 
-        # Absolute Fallback
-        from poke_env.player import RandomPlayer
+        # Absolute Fallback using a unique alias to avoid Pylint W0621
+        from poke_env.player import RandomPlayer as RP
         self._fallback_events_current_episode += 1
-        return RandomPlayer.choose_random_singles_move(battle)
+        return RP.choose_random_singles_move(battle)
 
     def embed_battle(self, battle: AbstractBattle) -> Dict[str, np.ndarray]:
         """
