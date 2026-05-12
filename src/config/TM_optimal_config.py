@@ -501,18 +501,18 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                 start_port=8000,
             ),
             model=ModelConfig(
-                num_transformer_layers=2, 
+                num_transformer_layers=1, 
             ),
             ppo=PPOConfig(
                 gamma=0.99,
-                train_batch_size=4096,
+                train_batch_size=8192,
                 sgd_minibatch_size=1024,
                 clip_param=0.2,
             ),
             curriculum=CurriculumConfig(
                 enabled=True,
                 rolling_window_episodes=400,
-                min_episodes_before_promotion=10000,
+                min_episodes_before_promotion=1000,
                 stages=[
                     # STAGE 1: Warmup (Easier promotion to avoid the plateau)
                     CurriculumStageConfig(
@@ -523,7 +523,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                         reward_config=RewardConfig(
                             victory_reward=20.0,
                             defeat_penalty=-20.0,
-                            hp_value_weight=0.4,
+                            hp_value_weight=1.4,
                             action_quality_weight=0.1,
                         )
                     ),
