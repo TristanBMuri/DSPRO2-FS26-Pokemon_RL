@@ -101,7 +101,9 @@ class HistoricalSelfPlayer(SelfPlayPlayer):
             self._lstm_states.pop(battle.battle_tag, None)
 
         if len(self._lstm_states) > 50:
-            self._lstm_states.clear()
+            oldest_keys = list(self._lstm_states.keys())[:-20]
+            for k in oldest_keys:
+                self._lstm_states.pop(k, None)
 
         # If it's a new battle
         if battle.battle_tag not in self._lstm_states:
