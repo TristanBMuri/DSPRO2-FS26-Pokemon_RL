@@ -517,7 +517,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                     # STAGE 1: Warmup (Easier promotion to avoid the plateau)
                     CurriculumStageConfig(
                         name="warmup_basics",
-                        promote_at_win_rate=0.55,  # Graduation is much easier now
+                        promote_at_win_rate=0.4,  # Graduation is much easier now
                         min_samples_for_promotion=500,
                         opponent_mix={"random": 0.4, "random_no_switch": 0.5, "heuristic": 0.1},
                         reward_config=RewardConfig(
@@ -527,22 +527,30 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                             action_quality_weight=0.1,
                         )
                     ),
-                    
-                    # STAGE 2: The Tactical "Grind"
+                    CurriculumStageConfig(
+                        name="random_stuff",
+                        promote_at_win_rate=0.7,  # Graduation is much easier now
+                        min_samples_for_promotion=500,
+                        opponent_mix={"random": 0.8, "random_no_switch": 0.1, "sef": 0.1},
+                        reward_config=RewardConfig(
+                            victory_reward=10.0,
+                            defeat_penalty=-10.0,
+                            hp_value_weight=0,
+                            action_quality_weight=0,
+                        )
+                    ),
                     CurriculumStageConfig(
                         name="heuristic_tactics",
                         promote_at_win_rate=0.60, 
                         min_samples_for_promotion=1000,
                         opponent_mix={"random_no_switch": 0.1, "heuristic": 0.55, "self": 0.2, "historical": 0.15},
                         reward_config=RewardConfig(
-                            victory_reward=10.0,
-                            defeat_penalty=-10.0,
+                            victory_reward=13.0,
+                            defeat_penalty=-13.0,
                             hp_value_weight=0.0,
                             action_quality_weight=0.0,
                         )
                     ),
-                    
-                    # STAGE 3: Final League Training
                     CurriculumStageConfig(
                         name="league_training",
                         promote_at_win_rate=2.0,
@@ -553,8 +561,8 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                             "self": 0.2
                         }, 
                         reward_config=RewardConfig(
-                            victory_reward=10.0,
-                            defeat_penalty=-10.0,
+                            victory_reward=15.0,
+                            defeat_penalty=-15.0,
                             hp_value_weight=0.0,
                             action_quality_weight=0.0,
                         )
