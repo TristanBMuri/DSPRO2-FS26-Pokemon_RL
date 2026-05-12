@@ -207,9 +207,10 @@ class PokemonTransformerModel(nn.Module):
     def _embed_obs(self, obs_dict: Dict[str, TensorType]) -> TensorType:
         """Project a flat (B', tokens, ...) obs dict to token embeddings."""
         base_obs = obs_dict["obs"].float()
-        species = obs_dict["species"].long()
-        items = obs_dict["items"].long()
-        abilities = obs_dict["abilities"].long()
+        
+        species = torch.clamp(obs_dict["species"].long(), 0, self.species_vocab_size - 1)
+        items = torch.clamp(obs_dict["items"].long(), 0, self.item_vocab_size - 1)
+        abilities = torch.clamp(obs_dict["abilities"].long(), 0, self.ability_vocab_size - 1)
 
         species_emb = self.species_embed(species)
         items_emb = self.item_embed(items)
