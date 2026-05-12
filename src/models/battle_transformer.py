@@ -249,9 +249,12 @@ class PokemonTransformerModel(nn.Module):
         self, obs_dict: Dict[str, TensorType]
     ) -> Dict[str, TensorType]:
         base_obs = obs_dict["obs"].float()
-        species = obs_dict["species"].long()
-        items = obs_dict["items"].long()
-        abilities = obs_dict["abilities"].long()
+        
+        # FIX: Clamp indices here too!
+        species = torch.clamp(obs_dict["species"].long(), 0, self.species_vocab_size - 1)
+        items = torch.clamp(obs_dict["items"].long(), 0, self.item_vocab_size - 1)
+        abilities = torch.clamp(obs_dict["abilities"].long(), 0, self.ability_vocab_size - 1)
+
         return {
             "base_obs": base_obs,
             "species_emb": self.species_embed(species),
