@@ -512,26 +512,26 @@ def get_config(preset: str = "standard") -> TrainingConfig:
             curriculum=CurriculumConfig(
                 enabled=True,
                 rolling_window_episodes=400,
-                min_episodes_before_promotion=2500,
+                min_episodes_before_promotion=10000,
                 stages=[
                     # STAGE 1: Warmup (Easier promotion to avoid the plateau)
                     CurriculumStageConfig(
                         name="warmup_basics",
-                        promote_at_win_rate=0.4,  # Graduation is much easier now
-                        min_samples_for_promotion=500,
+                        promote_at_win_rate=0.1,  # Graduation is much easier now
+                        min_samples_for_promotion=400,
                         opponent_mix={"random": 0.4, "random_no_switch": 0.5, "heuristic": 0.1},
                         reward_config=RewardConfig(
-                            victory_reward=10.0,
-                            defeat_penalty=-10.0,
-                            hp_value_weight=0.1,
+                            victory_reward=20.0,
+                            defeat_penalty=-20.0,
+                            hp_value_weight=0.4,
                             action_quality_weight=0.1,
                         )
                     ),
                     CurriculumStageConfig(
                         name="random_stuff",
                         promote_at_win_rate=0.7,  # Graduation is much easier now
-                        min_samples_for_promotion=500,
-                        opponent_mix={"random": 0.8, "random_no_switch": 0.1, "sef": 0.1},
+                        min_samples_for_promotion=400,
+                        opponent_mix={"random": 0.8, "random_no_switch": 0.1, "self": 0.1},
                         reward_config=RewardConfig(
                             victory_reward=10.0,
                             defeat_penalty=-10.0,
@@ -542,7 +542,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                     CurriculumStageConfig(
                         name="heuristic_tactics",
                         promote_at_win_rate=0.60, 
-                        min_samples_for_promotion=1000,
+                        min_samples_for_promotion=400,
                         opponent_mix={"random_no_switch": 0.1, "heuristic": 0.55, "self": 0.2, "historical": 0.15},
                         reward_config=RewardConfig(
                             victory_reward=13.0,
