@@ -160,6 +160,7 @@ class PokemonBattleEnv(SinglesEnv):
         # Absolute Fallback using a unique alias to avoid Pylint W0621
         from poke_env.player import RandomPlayer as RP
         self._fallback_events_current_episode += 1
+        self._step_fallback_penalty = True
         return RP.choose_random_singles_move(battle)
 
     def embed_battle(self, battle: AbstractBattle) -> Dict[str, np.ndarray]:
@@ -228,7 +229,14 @@ class PokemonBattleEnv(SinglesEnv):
             self._completed_battle_steps[battle_key] = self._env_step_counter
             self._reward_buffer.pop(battle, None)
 
-        return float(self._compute_configured_delta_reward(battle))
+        reward = float(self._compute_configured_delta_reward(battle))
+        
+        if getattr(self, "_step_fallback_penalty", False):
+            # Severe penalty for trying an illegal move
+            reward -= 2.0 
+            self._step_fallback_penalty = False
+            
+        return reward
 
     def _compute_configured_delta_reward(self, battle: AbstractBattle) -> float:
         """Poke-env style delta reward with matchup shaping."""
@@ -253,7 +261,11 @@ class PokemonBattleEnv(SinglesEnv):
             if mon.fainted:
                 current_value += fainted_value
 
-        current_value -= (number_of_pokemons - len(battle.opponent_team)) * hp_value
+        our_fainted = sum(1 for m in battle.team.values() if m.fainted)
+        opp_fainted = sum(1 for m in battle.opponent_team.values() if m.fainted)
+
+        current_value += (6 - our_fainted) * hp_value
+        current_value -= (6 - opp_fainted) * hp_value
 
         # Type matchup shaping: reward favorable active matchups
         if self.reward_config.matchup_reward_weight > 0:
@@ -561,7 +573,7 @@ class PokemonBattleEnv(SinglesEnv):
 
         # If no legal action could be verified, return default action.
         self._fallback_events_current_episode += 1
-        return np.int64(-2)
+        return np.int64(0)
 
 
 class CurriculumSingleAgentWrapper(SingleAgentWrapper):

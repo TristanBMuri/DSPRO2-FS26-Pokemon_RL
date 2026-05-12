@@ -103,9 +103,13 @@ class SelfPlayPlayer(Player):
     def choose_move(self, battle: AbstractBattle):
         self._try_load_weights()
 
-        # Prune LSTM cache for finished battles
         if battle.won or battle.lost:
             self._lstm_states.pop(battle.battle_tag, None)
+
+        if len(self._lstm_states) > 50:
+            oldest_keys = list(self._lstm_states.keys())[:-20]
+            for k in oldest_keys:
+                self._lstm_states.pop(k, None)
 
         try:
             return self._inference_move(battle)
@@ -161,6 +165,9 @@ class SelfPlayPlayer(Player):
 
             logits, _ = self.model.heads_from_features(features, mask)
 
+        action_mask_tensor = obs_tensors["action_mask"].squeeze(0)
+        logits[action_mask_tensor == 0] = -1e9
+        
         # 4. Sample from softmax distribution (temperature < 1.0 = sharper)
         temperature = 0.8
         probs = torch.softmax(logits / temperature, dim=-1)
