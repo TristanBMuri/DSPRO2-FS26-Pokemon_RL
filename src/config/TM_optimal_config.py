@@ -476,7 +476,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                 sgd_minibatch_size=512,
             ),
         ),
-"pure_league_play": TrainingConfig(
+        "pure_league_play": TrainingConfig(
             total_timesteps=20_000_000,
             env=EnvironmentConfig(
                 player_team_path=None,
