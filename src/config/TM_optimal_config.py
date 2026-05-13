@@ -66,7 +66,7 @@ class PPOConfig:
     clip_param: float = 0.2
 
     # Entropy bonus (exploration)
-    entropy_coeff: float = 0.03
+    entropy_coeff: float = 0.005
 
     # Value function
     vf_loss_coeff: float = 0.5
@@ -145,7 +145,7 @@ class RewardConfig:
 
     # Global reward scale: multiplies all rewards before returning to the agent.
     # Scales returns from ~[-15, +15] to ~[-1.5, +1.5], making value regression easier.
-    reward_scale: float = 0.02
+    reward_scale: float = 0.1
 
 
 @dataclass
@@ -476,22 +476,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                 sgd_minibatch_size=512,
             ),
         ),
-        "mav": TrainingConfig(
-            env=EnvironmentConfig(
-                num_workers=8,
-                num_envs_per_worker=2,
-                num_servers=8,
-                start_port=8000,
-            ),
-            model=ModelConfig(
-                num_transformer_layers=1,
-            ),
-            ppo=PPOConfig(
-                train_batch_size=4096,
-                sgd_minibatch_size=512,
-            ),
-        ),
-        "pure_league_play": TrainingConfig(
+"pure_league_play": TrainingConfig(
             total_timesteps=20_000_000,
             env=EnvironmentConfig(
                 player_team_path=None,
@@ -504,67 +489,68 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                 num_transformer_layers=1, 
             ),
             ppo=PPOConfig(
+                lr=0.0003,               # Explicitly set learning rate
                 gamma=0.99,
                 train_batch_size=8192,
                 sgd_minibatch_size=1024,
                 clip_param=0.2,
+                entropy_coeff=0.005,     # CRITICAL: Crushed from 0.03 so it actually learns
             ),
             curriculum=CurriculumConfig(
                 enabled=True,
                 rolling_window_episodes=400,
-                min_episodes_before_promotion=1000,
+                min_episodes_before_promotion=1500, # Give it time to stabilize before promoting
                 stages=[
-                    # STAGE 1: Warmup (Easier promotion to avoid the plateau)
+                    # STAGE 1: The Punching Bag. 
+                    # Goal: Learn to attack consistently instead of switching aimlessly.
                     CurriculumStageConfig(
                         name="warmup_basics",
-                        promote_at_win_rate=0.58,  # Graduation is much easier now
+                        promote_at_win_rate=0.75, 
                         min_samples_for_promotion=400,
-                        opponent_mix={"random": 0.5, "random_no_switch": 0.4, "heuristic": 0.1},
+                        opponent_mix={"random": 0.6, "random_no_switch": 0.4},
                         reward_config=RewardConfig(
                             victory_reward=20.0,
                             defeat_penalty=-20.0,
-                            hp_value_weight=3,
+                            hp_value_weight=3.0,
+                            fainted_value=2.0,      # Give breadcrumbs for taking out a mon
                             action_quality_weight=0.2,
+                            reward_scale=0.1,       # CRITICAL: Overriding the 0.02 default
                         )
                     ),
-                    CurriculumStageConfig(
-                        name="random_stuff",
-                        promote_at_win_rate=0.7, 
-                        min_samples_for_promotion=400,
-                        opponent_mix={"random": 0.8, "random_no_switch": 0.1, "self": 0.1},
-                        reward_config=RewardConfig(
-                            victory_reward=10.0,
-                            defeat_penalty=-10.0,
-                            hp_value_weight=0.4,
-                            action_quality_weight=0,
-                        )
-                    ),
+                    # STAGE 2: The Type Matchup Test. 
+                    # Goal: Random attacks don't work against Heuristics. Learn type advantages.
                     CurriculumStageConfig(
                         name="heuristic_tactics",
-                        promote_at_win_rate=0.60, 
+                        promote_at_win_rate=0.65, 
                         min_samples_for_promotion=400,
-                        opponent_mix={"random_no_switch": 0.1, "heuristic": 0.55, "self": 0.2, "historical": 0.15},
+                        opponent_mix={"random_no_switch": 0.15, "heuristic": 0.60, "self": 0.25},
                         reward_config=RewardConfig(
-                            victory_reward=13.0,
-                            defeat_penalty=-13.0,
-                            hp_value_weight=0.0,
-                            action_quality_weight=0.0,
+                            victory_reward=20.0,
+                            defeat_penalty=-20.0,
+                            hp_value_weight=1.5,    # Tapering off the dense reward
+                            fainted_value=1.0,
+                            action_quality_weight=0.1,
+                            reward_scale=0.1,
                         )
                     ),
+                    # STAGE 3: The Deep End.
+                    # Goal: Learn meta-strategies against itself and its past ghosts.
                     CurriculumStageConfig(
                         name="league_training",
-                        promote_at_win_rate=2.0,
+                        promote_at_win_rate=2.0,    # Terminal stage, never promotes
                         min_samples_for_promotion=999999,
                         opponent_mix={
-                            "heuristic": 0.4, 
+                            "heuristic": 0.3, 
                             "historical": 0.4, 
-                            "self": 0.2
+                            "self": 0.3
                         }, 
                         reward_config=RewardConfig(
-                            victory_reward=15.0,
-                            defeat_penalty=-15.0,
-                            hp_value_weight=0.0,
+                            victory_reward=25.0,    # Pure focus on winning
+                            defeat_penalty=-25.0,
+                            hp_value_weight=0.0,    # No more training wheels
+                            fainted_value=0.0,
                             action_quality_weight=0.0,
+                            reward_scale=0.1,
                         )
                     )
                 ]
