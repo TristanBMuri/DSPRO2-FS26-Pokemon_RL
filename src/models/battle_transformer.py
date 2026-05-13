@@ -570,15 +570,36 @@ class PokemonRLModule(TorchRLModule, ValueFunctionAPI):
     def get_initial_state(self) -> Dict[str, Any]:
         return self.model.get_initial_state()
 
-    # ---- Forward passes -------------------------------------------------
-
     def _forward(self, batch: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         obs_dict = batch[Columns.OBS]
         state = batch.get(Columns.STATE_IN, None)
         features, new_state, action_mask = self.model.compute_features(obs_dict, state)
         logits, _values = self.model.heads_from_features(features, action_mask)
 
+        if action_mask is not None:
+            inf_mask = torch.clamp(torch.log(action_mask), min=-1e9)
+            logits = logits + inf_mask
+
         output: Dict[str, Any] = {Columns.ACTION_DIST_INPUTS: logits}
+        if self.model.use_lstm:
+            output[Columns.STATE_OUT] = new_state
+        return output
+
+    def _forward_train(self, batch: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+        obs_dict = batch[Columns.OBS]
+        state = batch.get(Columns.STATE_IN, None)
+        features, new_state, action_mask = self.model.compute_features(obs_dict, state)
+        logits, values = self.model.heads_from_features(features, action_mask)
+
+        if action_mask is not None:
+            inf_mask = torch.clamp(torch.log(action_mask), min=-1e9)
+            logits = logits + inf_mask
+
+        output: Dict[str, Any] = {
+            Columns.ACTION_DIST_INPUTS: logits,
+            Columns.VF_PREDS: values,
+            Columns.EMBEDDINGS: features,
+        }
         if self.model.use_lstm:
             output[Columns.STATE_OUT] = new_state
         return output
@@ -591,23 +612,7 @@ class PokemonRLModule(TorchRLModule, ValueFunctionAPI):
         with torch.no_grad():
             return self._forward(batch, **kwargs)
 
-    def _forward_train(self, batch: Dict[str, Any], **kwargs) -> Dict[str, Any]:
-        obs_dict = batch[Columns.OBS]
-        state = batch.get(Columns.STATE_IN, None)
-        features, new_state, action_mask = self.model.compute_features(obs_dict, state)
-        logits, values = self.model.heads_from_features(features, action_mask)
 
-        output: Dict[str, Any] = {
-            Columns.ACTION_DIST_INPUTS: logits,
-            Columns.VF_PREDS: values,
-            # Stash the trunk output so PPO's loss can re-use it via
-            # ``compute_values(batch, embeddings=...)`` without rerunning the
-            # transformer + LSTM.
-            Columns.EMBEDDINGS: features,
-        }
-        if self.model.use_lstm:
-            output[Columns.STATE_OUT] = new_state
-        return output
 
     # ---- ValueFunctionAPI ----------------------------------------------
 
