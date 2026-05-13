@@ -517,25 +517,25 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                     # STAGE 1: Warmup (Easier promotion to avoid the plateau)
                     CurriculumStageConfig(
                         name="warmup_basics",
-                        promote_at_win_rate=0.1,  # Graduation is much easier now
+                        promote_at_win_rate=0.58,  # Graduation is much easier now
                         min_samples_for_promotion=400,
-                        opponent_mix={"random": 0.4, "random_no_switch": 0.5, "heuristic": 0.1},
+                        opponent_mix={"random": 0.5, "random_no_switch": 0.4, "heuristic": 0.1},
                         reward_config=RewardConfig(
                             victory_reward=20.0,
                             defeat_penalty=-20.0,
-                            hp_value_weight=1.4,
-                            action_quality_weight=0.1,
+                            hp_value_weight=3,
+                            action_quality_weight=0.2,
                         )
                     ),
                     CurriculumStageConfig(
                         name="random_stuff",
-                        promote_at_win_rate=0.7,  # Graduation is much easier now
+                        promote_at_win_rate=0.7, 
                         min_samples_for_promotion=400,
                         opponent_mix={"random": 0.8, "random_no_switch": 0.1, "self": 0.1},
                         reward_config=RewardConfig(
                             victory_reward=10.0,
                             defeat_penalty=-10.0,
-                            hp_value_weight=0,
+                            hp_value_weight=0.4,
                             action_quality_weight=0,
                         )
                     ),
