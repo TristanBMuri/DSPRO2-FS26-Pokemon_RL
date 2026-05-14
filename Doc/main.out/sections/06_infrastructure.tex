@@ -25,9 +25,9 @@ across multiple workers and performs SGD updates on a central learner:
 \end{tabularx}
 \end{center}
 
-The default (\texttt{standard}) configuration uses 12~workers with 4
-environments per worker, yielding \textbf{48~parallel battles}.  Each Showdown
-server hosts approximately 6~concurrent battles.
+The default (\texttt{standard}) configuration uses 24~workers with 8
+environments per worker, yielding \textbf{192~parallel battles}.  Each Showdown
+server hosts approximately 24~concurrent battles.
 
 \section{Hardware}
 
@@ -38,7 +38,7 @@ server hosts approximately 6~concurrent battles.
   \textbf{Resource} & \textbf{Specification} \\
   \midrule
   GPU         & NVIDIA RTX 5090 (\texttt{optimal} preset) \\
-  RAM         & $\sim$56\,GB peak with 48 environments \\
+  RAM         & $\sim$44\,GB peak with 48 environments \\
   CPU         & Multi-core (workers run on CPU threads) \\
   Storage     & Local SSD for checkpoints and MLflow artifacts \\
   \bottomrule
@@ -66,11 +66,7 @@ Five hardware presets control model size, parallelism, and training duration:
   LSTM hidden             & ---   & 512   & 256   & 768   \\
   Use LSTM                & No    & Yes   & No    & Yes   \\
   Train batch size        & 4\,096  & 6\,144  & 2\,048  & 16\,384 \\
-  SGD minibatch size      & 256   & 256   & 128   & 512   \\
-  Workers                 & 0     & 12    & 4     & 12    \\
-  Env/worker              & 1     & 4     & 2     & 4     \\
-  Total envs              & 1     & 48    & 8     & 48    \\
-  Total timesteps         & 150K  & 10M   & 10M   & 10M   \\
+  SGD minibatch size      & 256   & 512   & 128   & 512   \\
   Approx.\ params         & $\sim$1M & $\sim$10M & $\sim$4M & $\sim$42M \\
   \bottomrule
 \end{tabularx}
@@ -91,18 +87,21 @@ Default hyperparameters across all presets (unless overridden):
   \toprule
   \textbf{Parameter} & \textbf{Value} \\
   \midrule
-  Learning rate              & $3 \times 10^{-4}$ \\
-  Discount ($\gamma$)        & 0.95 \\
-  GAE lambda ($\lambda$)     & 0.95 \\
-  Clip range ($\epsilon$)    & 0.2 \\
-  Entropy coefficient        & 0.05 \\
+  Learning rate              & $2 \times 10^{-4}$ \\
+  Discount ($\gamma$)        & 0.97 \\
+  GAE lambda ($\lambda$)     & 0.87 \\
+  Clip range ($\epsilon$)    & 0.08 \\
+  Entropy coefficient        & 0.013 \\
   Value-function loss coeff. & 0.5 \\
-  Value clip param           & 5.0 \\
+  Value clip param           & 4.85 \\
   Gradient clipping          & 5.0 \\
-  SGD iterations per batch   & 10 \\
+  SGD iterations per batch   & 8 \\
   \bottomrule
 \end{tabularx}
 \end{center}
+
+These are based on the first breakthrough run.
+%https://mlflow-server.chozo.me/#/experiments/6/runs/84ec848a3d574816830d5367b4e360d6/model-metrics
 
 \section{MLflow Experiment Tracking}
 
@@ -112,13 +111,13 @@ data are recorded:
 
 \begin{itemize}
   \item \textbf{Configuration snapshot:} Full training config, model config,
-        curriculum config, and hardware preset---stored as MLflow parameters.
+        curriculum config, and hardware preset, stored as MLflow parameters.
   \item \textbf{Training metrics:} Policy loss, value loss, entropy,
-        KL divergence, win rate, episode length, per-stage statistics---logged
+        KL divergence, win rate, episode length, per-stage statistics, logged
         every training iteration.
   \item \textbf{Validation metrics:} Win rates against fixed opponents
         (random, heuristic), per-opponent-type breakdowns, fallback event
-        counts---logged at scheduled evaluation intervals.
+        counts, logged at scheduled evaluation intervals.
   \item \textbf{Diagnostic metrics:} Action-mask density, observation sample
         recordings, HP remaining distributions, faint counts per episode.
   \item \textbf{System metrics:} CPU/RAM/GPU utilisation, memory leak counters.
@@ -135,7 +134,7 @@ structured comparison in the MLflow UI.
 \section{Checkpoint Management}
 
 \begin{itemize}
-  \item \textbf{Frequency:} Checkpoints saved every 500\,000 training steps.
+  \item \textbf{Frequency:} Checkpoints saved every 200\,000 training steps.
   \item \textbf{Retention:} Up to 5~checkpoints retained (oldest automatically
         deleted).
   \item \textbf{Self-play export:} At each checkpoint, model weights are also
@@ -157,8 +156,8 @@ Scheduled evaluation runs against fixed opponent configurations:
   \textbf{Protocol} & \textbf{Description} \\
   \midrule
   Smoke test     & Quick sanity check: 10 episodes against random opponent. \\
-  Fixed paired   & 20~frozen teams $\times$ 2~opponents (random + heuristic) =
-                   40~battles per evaluation run.  Primary comparison metric. \\
+  Fixed paired   & 20~frozen teams $\times$ 3~opponents (random + random no switch + heuristic) =
+                   60~battles per evaluation run.  Primary comparison metric. \\
   Mirror         & Both sides use the same team; tests raw battling skill
                    without team advantage. \\
   \bottomrule
@@ -171,8 +170,8 @@ training and can also be run manually against any checkpoint via
 per-opponent-type breakdowns.
 
 \section{Training Throughput}
+% Look into this! I don't know if its accurate
 
 Observed throughput on the \texttt{standard} preset:
 $\sim$800~environment samples per second (target: 1\,000+).  The primary
-bottleneck is action-mask computation, which accounts for approximately 82\,\%
-of per-step wall time (2.3\,ms masking vs.\ 0.5\,ms forward pass).
+bottleneck is the cpu since all the servers are single core and run on cpu.

@@ -1,0 +1,500 @@
+% ─── Chapter 7: Experiments & Iterative Development ───────────────
+\chapter{Experiments \& Iterative Development}
+\label{ch:experiments}
+
+This chapter documents the iterative development process through which the
+system was debugged, improved, and validated.  Each phase addresses a specific
+problem, proposes a solution, and reports measured results.  The phases are
+presented in chronological order.
+
+\section{Baseline Establishment}
+
+\textbf{Starting point.} The initial system used a 22-action native
+\texttt{poke-env} space, Adler-32 hash-based categorical embeddings (20\,000
+buckets), no positional encoding, a 4-layer post-norm transformer, and a
+disabled LSTM.
+
+\textbf{Observation.} The training pipeline ran end-to-end.  The easy
+curriculum stage (random opponents) was solved at approximately 84\,000~steps,
+reaching the 85\,\% win-rate threshold.  However, the medium stage plateaued at
+roughly 50\,\% win rate by $\sim$100\,000~steps and did not improve further
+even after 2.5~million steps. Medium was 50/50 split of random and heuristics. The plateau was basically having 100 win rate against random and 0 against heuristics.
+
+\textbf{Key metrics:}
+\begin{itemize}
+  \item Easy stage: promoted at $\sim$84K steps (85\,\% win rate).
+  \item Medium stage: plateau at $\sim$50\,\% win rate, persisted through 2.5M+ steps.
+  \item Loss signature: high value loss, high entropy, low policy loss, indicating
+        the value network was failing to predict returns while the policy was not
+        making meaningful updates.
+\end{itemize}
+
+% TODO: Insert MLflow screenshot of baseline training curves showing:
+% - Win rate over time (easy promotion then medium plateau)
+% - Value loss, policy loss, entropy curves
+
+\section{Validation Infrastructure}
+
+\textbf{Problem.} Without a standardised evaluation protocol, checkpoint
+quality could only be assessed by inspecting training-time metrics, which are
+noisy and may not reflect true policy strength.
+
+\textbf{Solution.} Implemented a validation pipeline with multiple protocols:
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{l X}
+  \toprule
+  \textbf{Protocol} & \textbf{Method} \\
+  \midrule
+  Smoke        & 10 episodes vs.\ random opponent (quick sanity check). \\
+  Fixed paired & 20 frozen teams $\times$ 2 opponents = 40 battles per run. \\
+  Mirror       & Both sides use identical team. \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Additionally, 20~frozen Gen\,8 random-battle teams were generated and stored
+as JSON manifests (10~swapped pairs for fairness).
+
+\textbf{First validation results} (checkpoint at step~51\,200):
+\begin{itemize}
+  \item Overall win rate: 37.5\,\%
+  \item Vs.\ random: 75\,\%
+  \item Vs.\ heuristic: 0\,\%
+  \item Fallback events: 2.60~per battle (0.069~per step), indicating frequent
+        invalid-action recoveries.
+\end{itemize}
+
+A subsequent diagnostics run with the final checkpoint showed:
+\begin{itemize}
+  \item Overall: 50\,\%
+  \item Vs.\ random: 95\,\%
+  \item Vs.\ heuristic: 5\,\%
+\end{itemize}
+
+The sharp contrast between random and heuristic performance confirmed that the
+agent had learned basic move selection but not strategic play.
+
+\section{Vocabulary \& ID Migration}
+
+\textbf{Problem.} Adler-32 hashing with modulo 20\,000 produced an estimated
+7.5\,\% collision rate among $\sim$1\,800 unique entity strings.  Collisions
+mean different Pok\'{e}mon species (or items or abilities) share the same
+embedding, degrading the model's ability to distinguish between entities.
+
+\textbf{Solution.} Replaced hash-based IDs with stable dictionary lookups:
+
+\begin{itemize}
+  \item Generated explicit vocabularies from Showdown data files.
+  \item Mapped each entity to a unique integer index.
+  \item Added support for display-form aliases (e.g.\ ``Shellos (East Sea)''
+        $\to$ internal key).
+\end{itemize}
+
+\textbf{Result.} Vocabulary sizes: 1\,516~species, 584~items, 315~abilities.
+Coverage audit confirmed \textbf{zero unknown entities} across the BDSP
+dataset and validation manifests.  This change intentionally broke
+compatibility with all previous checkpoints: new training runs are treated as
+a new experiment family.
+
+\section{Logging \& Metrics Standardisation}
+
+\textbf{Problem.} Metric flow from environment to MLflow had gaps:
+``unknown'' opponent metadata was not properly logged, and opponent-specific
+metrics were sometimes missing from training runs.
+
+\textbf{Solution.} Traced the full metric path from environment through
+\texttt{EnvBridge} to MLflow.  Fixed root causes:
+\begin{itemize}
+  \item ``Unknown'' opponent metadata now correctly logged as a missing count.
+  \item Opponent-specific keys (e.g.\
+        \texttt{training/win\_rate\_vs\_random},
+        \texttt{training/win\_rate\_vs\_heuristic}) now present in all runs.
+  \item Defined a standard contract for high-signal metrics.
+\end{itemize}
+
+\textbf{Result.} All subsequent training runs produce complete, structured
+metrics enabling reliable run comparison in MLflow.
+
+\section{Embedding Audit \& Global Features}
+
+\textbf{Problem.} The observation tensor lacked high-value global context
+features that could help the model understand battle dynamics (e.g.\ which
+opponent type it was facing, whether it was forced to switch).
+
+\textbf{Solution.} Added to the global token (position~0) without changing
+the tensor dimensions:
+\begin{itemize}
+  \item Opponent label categories (\texttt{opponent\_random},
+        \texttt{opponent\_heuristic}, \texttt{opponent\_other}).
+  \item Normalised battle turn, force-switch flag, trapped flag.
+  \item Normalised available move and switch counts.
+  \item Dynamax, Mega Evolution, and Z-Move availability flags.
+\end{itemize}
+
+Also discovered and fixed \textbf{broken weather encoding}: the battle state
+passed weather as a Python dictionary rather than enum keys, so weather
+information was never actually encoded into the observation.
+
+\textbf{Result.} The model now receives richer context per step.  However,
+some potentially high-value features remain missing (move PP, revealed vs.\
+unrevealed opponent knowledge, speed control information).
+
+\section{Position \& Role Embeddings}
+
+\textbf{Problem.} The transformer received 13~tokens with no positional
+information.  Self-attention is permutation-invariant, meaning the model
+could not structurally distinguish between the active Pok\'{e}mon and bench
+slots, or between own-team and opponent-team tokens.
+
+\textbf{Solution.} Added two sets of learnable embeddings after input
+projection:
+\begin{itemize}
+  \item \textbf{Position embeddings:} 13~vectors, one per token position.
+  \item \textbf{Role embeddings:} 5~coarse roles (CLS, our active, our bench,
+        opponent active, opponent bench), shared across positions within a role.
+\end{itemize}
+
+\textbf{Result.} The transformer now has explicit slot and side information
+before self-attention.  Old checkpoints are incompatible due to new embedding
+parameters, so a fresh training run was required.
+
+\section{Compressed Action Space}
+
+\textbf{Problem.} The native \texttt{poke-env} action space has 22~actions
+(6~switches + 4~regular moves + 12~gimmick variants).  This large branching
+factor slows exploration, and the 12~gimmick variants are rarely all available
+simultaneously.
+
+\textbf{Solution.} Introduced a compressed 14-action space:
+
+\begin{center}
+\small
+\begin{tabularx}{0.7\textwidth}{c l l}
+  \toprule
+  \textbf{Indices} & \textbf{Category} & \textbf{Mapping} \\
+  \midrule
+  0--3  & Regular moves & Move 1--4 \\
+  4--7  & Gimmick moves & Auto: Mega $\to$ Z $\to$ Dynamax \\
+  8--13 & Switches      & Party slot 1--6 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Gimmick slots automatically resolve to the first legally available gimmick
+type, so the agent only needs to learn ``use gimmick'' rather than ``use
+specific gimmick variant.''
+
+\textbf{Result.} Action mask changed from $(22,)$ to $(14,)$.  The reduced
+branching factor should simplify exploration.  Incompatible with old
+checkpoints.
+
+\section{LSTM Memory Fix}
+
+\textbf{Problem.} The LSTM path existed in model code but was non-functional
+due to RLlib's connector path not supporting recurrent state propagation in
+the production setup.
+
+\textbf{Solution.} Rewrote the LSTM integration:
+\begin{itemize}
+  \item LSTM now runs even when no incoming recurrent state is provided
+        (creates zero initial state).
+  \item \texttt{compute\_values()} uses the same forward path as policy logit
+        computation, ensuring consistent state handling.
+  \item Single-step and sequence batches both pass through the recurrent path
+        correctly.
+  \item \texttt{get\_initial\_state()} returns unbatched state tensors of shape
+        $[H]$ for compatibility with RLlib.
+\end{itemize}
+
+\textbf{Result.} Cross-turn memory is now architecturally supported.
+End-to-end training validation with LSTM enabled remains a next step.
+
+\section{PPO Pipeline Fixes}
+
+\textbf{Problem.} After the architectural improvements, a comprehensive audit
+revealed that the PPO training pipeline itself had six issues preventing
+effective learning, independent of model architecture.
+
+\textbf{Six fixes applied:}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{l r X}
+  \toprule
+  \textbf{Issue} & \textbf{Before $\to$ After} & \textbf{Impact} \\
+  \midrule
+  Gradient clipping starvation &
+    $\text{clip}=0.5 \to 5.0$ &
+    Total grad norm $\sim$65 was clipped to 0.77\,\%, effectively zeroing
+    all transformer/embedding gradients. \\
+  No per-step action signal &
+    $0.0 \to 0.2/0.3$ &
+    Matchup and action-quality weights restored, providing per-step credit
+    assignment (without them, gradients cancelled over episodes). \\
+  Entropy collapse &
+    $0.005 \to 0.2$ &
+    Entropy bonus was negligible ($\sim$0.02 vs.\ $\sim$5.0 total loss).
+    Agent stopped exploring. \\
+  Discount horizon too long &
+    $\gamma=0.99 \to 0.95$ &
+    100-step horizon for $\sim$25-turn battles was too long.  20-step
+    horizon better matches episode length. \\
+  Value function instability &
+    $\text{vf\_clip}=25.0 \to 10.0$ &
+    Allowed 3$\times$ the reward range per update, destabilising value
+    regression. \\
+  LSTM crash on missing state &
+    ValueError $\to$ zeros &
+    \texttt{\_extract\_state} crashed when state was absent instead of
+    returning a zero tensor. \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Result.} These fixes collectively enabled the agent to start learning
+beyond the easy curriculum stage.  The most impactful single change was
+gradient clipping: with the clip set to 0.5, the transformer and embedding
+layers received near-zero gradients for the entire training run.
+
+\begin{keyinsight}
+Before diagnosing model architecture, it is essential to verify that gradients
+are actually flowing.  In this case, an aggressive gradient clip was silently
+starving all learnable layers, and the problem was invisible in standard loss
+metrics.
+\end{keyinsight}
+
+\section{Reward Scaling \& Value Function Fix}
+\label{sec:reward_scaling}
+
+\textbf{Problem.} Across the entire project history, explained variance had
+been stuck at approximately~0.1 (and sometimes negative).  The value function
+was essentially predicting a constant, and value loss showed no downward trend.
+This was the single largest blocker to policy improvement.
+
+\textbf{Root cause.} Returns were in the range $[-15, +15]$ with no
+normalisation.  RLlib normalises advantages but \emph{not} returns, so the
+value function was chasing an unscaled, moving target.  With
+\texttt{vf\_clip\_param}$=$10.0, the value head could overshoot by 3$\times$
+the reward range per update, preventing convergence.
+
+\textbf{Changes applied:}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{l r r X}
+  \toprule
+  \textbf{Parameter} & \textbf{Before} & \textbf{After} & \textbf{Rationale} \\
+  \midrule
+  \texttt{reward\_scale} & --- & 0.1 &
+    Scales returns from $[-15,+15]$ to $[-1.5,+1.5]$.  Makes value
+    regression tractable. \\
+  \texttt{vf\_clip\_param} & 10.0 & 3.0 &
+    Tighter clipping prevents value head from overshooting. \\
+  $\lambda$ (GAE) & 0.92 & 0.88 &
+    Reduces GAE target variance. \\
+  \texttt{hidden\_dim} & 256 & 512 &
+    Wider model gives value head more capacity. \\
+  \texttt{num\_heads} & 4 & 8 &
+    More heads for finer-grained attention. \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Result (378K steps):}
+\begin{itemize}
+  \item Explained variance: ${\sim}0.1 \to$ \textbf{0.53--0.87} (median
+        ${\sim}0.72$).
+  \item Value loss: converged from 0.21 to \textbf{0.08--0.13} by
+        step~15K.
+  \item Benchmark at 200K steps: \textbf{100\,\%} vs.\ random, \textbf{96\,\%}
+        vs.\ \texttt{random\_no\_switch}, 22\,\% vs.\ heuristic.
+\end{itemize}
+
+\begin{keyinsight}
+\textbf{Reward scaling was the single most impactful change in the entire
+project.}  The value function went from completely non-functional (explained
+variance near zero or negative) to well-calibrated (median 0.72) with a single
+multiplicative constant.  Combined with fixed teams, the agent achieved a
+benchmark skill score of 0.9911 with 98\,\% win rate against heuristic
+opponents.  The lesson: before tuning architecture or reward \emph{shape},
+ensure the value function can actually learn by normalising the return scale.
+\end{keyinsight}
+
+% TODO: Insert MLflow before/after comparison showing:
+% - Explained variance: flat ~0.1 before, rising to 0.53-0.87 after
+% - Value loss: high/noisy before, converging to 0.08-0.13 after
+% - Win rate curves: dramatic improvement after reward scaling
+% Annotate the exact point where reward_scale was introduced.
+
+\section{ Fixed Team \& No-Gimmick Format}
+
+\textbf{Problem.} Random battles introduce high entropy in team composition,
+making it difficult to isolate whether the agent is learning battle strategy
+or merely memorising matchup patterns.  Additionally, Dynamax and Terastallize
+mechanics add complexity that distracts from core battle competency.
+
+\textbf{Solution.} Two changes:
+\begin{itemize}
+  \item \textbf{Fixed player team:} Added \texttt{player\_team\_path} config
+        option.  When set, the agent always uses a specific team (Showdown
+        \texttt{.txt} format).  The battle format automatically switches from
+        \texttt{gen8randombattle} to \texttt{gen8customgame}.
+  \item \textbf{No-gimmick formats:} Created custom Showdown formats
+        (\texttt{gen8customgamenogimmicks},
+        \texttt{gen8randombattlenogimmicks}) that disable Dynamax, and remove
+        Sleep Clause for more natural battle dynamics.
+\end{itemize}
+
+\textbf{Result.} With a fixed team, the agent only needs to learn battle
+strategy, not team adaptation.  This dramatically simplified the learning
+problem and enabled rapid progress on Milestone~1.
+With this setup we finally achieved good results in terms of winrate against anything other than random.
+
+TODO: Insert any comparison graph of fixed vs random winrates against random no switch and against heuristics.
+
+\section{Self-Play Opponent Fix}
+
+\textbf{Problem.} Self-play win rates were 90--95\,\%, suggesting the agent
+was dominating its own copies.  Investigation revealed that self-play
+opponents were actually playing with random weights.
+
+\textbf{Root causes:}
+\begin{enumerate}
+  \item \textbf{Weights never loaded (CRITICAL):} The
+        \texttt{selfplay\_weights\_path} was relative
+        (\texttt{checkpoints/selfplay\_latest.pt}).  Ray workers run from a
+        temporary directory and could not find the file.  The load failure was
+        silently swallowed by a bare \texttt{except Exception: pass}.
+  \item \textbf{Stale weights:} Weights were only exported every 150K steps.
+        The opponent played with outdated checkpoints.
+  \item \textbf{Deterministic opponent:} Argmax action selection allowed the
+        training agent to exploit deterministic patterns.
+\end{enumerate}
+
+\textbf{Fixes:}
+\begin{itemize}
+  \item Resolved \texttt{selfplay\_weights\_path} to absolute before passing
+        to Ray workers.
+  \item Replaced \texttt{except: pass} with explicit error logging.
+  \item Weight export now happens every training iteration (not just at
+        checkpoint saves).
+  \item Replaced argmax with temperature sampling ($\tau=0.8$).
+  \item Fixed \texttt{opponent\_type=None} to
+        \texttt{opponent\_type="self"}, ensuring correct embedding features.
+\end{itemize}
+
+\textbf{Result.} After the fix, all 12 workers successfully loaded weights
+(previously zero workers).  Self-play now produces meaningful training signal.
+
+\begin{keyinsight}
+Any file path passed to Ray workers must be resolved to an absolute path
+\emph{before} serialisation.  Ray workers execute from a temporary working
+directory and cannot find relative paths.  Silent exception handling can mask
+critical failures for thousands of training steps.
+\end{keyinsight}
+
+\section{Self-Play Diagnostics \& NaN Fix}
+
+\textbf{Problem.} After fixing weight loading, the self-play opponent's
+fallback rate was 100\,\%, meaning it still played randomly.
+
+\textbf{Root cause.} PyTorch~2.10 has a bug in
+\texttt{TransformerEncoderLayer.forward()} when using a float-valued
+\texttt{src\_mask}.  The model's learnable attention bias (an
+\texttt{nn.Parameter}) triggered this code path, producing NaN logits every
+forward pass.  The \texttt{multinomial} sampler then failed, falling back to
+random action selection.
+
+\textbf{Fix.} Replaced \texttt{layer(x, src\_mask=bias)} with a manual
+norm-first decomposition: LayerNorm $\to$ self-attention $\to$ residual
+$\to$ LayerNorm $\to$ FFN $\to$ residual.  This bypasses PyTorch's fused path
+and produces correct values.
+
+\textbf{Diagnostic instrumentation added:}
+\begin{itemize}
+  \item \texttt{\_diag} accumulator in \texttt{SelfPlayPlayer}: weight load
+        count, fallback count, action histogram, top probability, entropy,
+        valid action count.
+  \item Threaded through wrapper $\to$ env bridge $\to$ trainer, logged to
+        \texttt{logs/selfplay\_diagnostics.log} and MLflow.
+\end{itemize}
+
+\textbf{Result.} Fallback rate dropped from 100\,\% to 0\,\%.  Over 500K
+steps of training, the model's confidence progressed from near-uniform
+(entropy~2.0, top probability~0.21) to confident (entropy~1.2, top
+probability~0.47).  Win rates at 500K steps: 91\,\% vs.\ random, 31\,\%
+vs.\ \texttt{random\_no\_switch}, 30\,\% vs.\ self.
+
+These results were with randomly generated Teams on both sides.
+
+\begin{keyinsight}
+Do not trust framework-level operations without testing.  A PyTorch internal
+bug in the transformer layer was causing NaN outputs, and only explicit
+diagnostic logging revealed it. This was revealed because self play win rate was basically the same as against random. While it should have been 50\%. 
+\end{keyinsight}
+
+\section{Expanded Validation System}
+
+\textbf{Problem.} The validation system had several limitations: subprocess
+per protocol, only argmax actions, missing
+\texttt{random\_no\_switch} opponent, no unified benchmark, and no console
+output during training. Which would make a hyperparameter sweep bad.
+
+\textbf{Solution.} Major overhaul of the validation infrastructure:
+\begin{itemize}
+  \item \textbf{Benchmark protocol:} 3 opponents $\times$ 50 episodes
+        (150~total).  Reports per-opponent win rate with Wilson 95\,\%
+        confidence intervals, a weighted skill score (random$=$1.0,
+        \texttt{random\_no\_switch}$=$1.5, heuristic$=$2.0), and consistency
+        (fraction of tiers above 50\,\% win rate).
+  \item \textbf{In-process validation:} \texttt{run\_inprocess\_validation()}
+        runs against the live algorithm during training, with no subprocess,
+        Ray init, or checkpoint restore overhead.
+  \item \textbf{Parallel benchmark:} Episodes distributed across $N$~servers
+        via \texttt{ThreadPoolExecutor}.  Each environment gets a sequential
+        chunk, environments run in parallel.
+  \item \textbf{Stochastic evaluation:} \texttt{-{}-explore} flag samples
+        from a masked softmax instead of argmax, evaluating the stochastic
+        policy.
+  \item \textbf{Console output:} Per-opponent win rate bars with confidence
+        interval bounds printed at each validation interval.
+\end{itemize}
+
+\textbf{Result.} Validation now runs in-process during training with zero
+overhead, produces comparable benchmark scores across all checkpoints, and
+provides opponent-level breakdowns that make performance transparent.
+
+
+
+\section{Hyperparameter Sweep Setup}
+
+\textbf{Problem.} With fixed teams starting to perform, the remaining
+performance gap (particularly against heuristic opponents with random teams)
+required systematic hyperparameter optimisation rather than manual tuning.
+
+\textbf{Solution.} Implemented an Optuna-based sweep with TPE sampler:
+\begin{itemize}
+  \item \textbf{Objective:} Benchmark skill score (weighted win rate across
+        three opponent tiers).
+  \item \textbf{Fixed curriculum:} Single stage with 20\,\% random,
+        40\,\% \texttt{random\_no\_switch}, 40\,\% heuristic.  No stage
+        promotion, ensuring consistent evaluation across trials.
+  \item \textbf{Search space:} 10~parameters covering learning rate
+        (log-uniform), entropy coefficient (log-uniform), discount factor,
+        GAE $\lambda$, PPO clip, value-function clip, dropout, reward scale
+        (categorical), matchup weight, and action-quality weight.
+  \item \textbf{Resume mechanism:} SQLite persistence
+        (\texttt{logs/hparam\_study.db}) allows interrupting and resuming
+        sweeps.
+\end{itemize}
+
+\textbf{Dry run results (3~trials, 100K steps each):} Best trial (fixed team) achieved
+70\,\% win rate vs.\ heuristic at 150K steps (skill score 0.847), confirming
+the sweep can find productive regions of the hyperparameter space.
+
+\textbf{Status.} The full sweep (50~trials, 600K steps each) ran for the random-teams setting. With none of the setting reaching even a 40\% win rate against heuristics. While fixed team staurated the benchmark within 300k steps with basically all configurations. The differences in performance can even be considered noise since most where in the region of 96\% to 98\% win rate against heuristics.
+
+% TODO: Insert Optuna parallel coordinate plot or contour plot showing
+% the hyperparameter search space and objective values across trials.

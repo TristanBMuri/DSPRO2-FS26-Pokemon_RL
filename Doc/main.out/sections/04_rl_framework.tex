@@ -26,8 +26,7 @@ The Pok\'{e}mon battle environment is modelled as a Markov Decision Process
   Transition         & Deterministic given both players' actions;
                       stochasticity arises from the opponent's policy and
                       damage variance in the simulator. \\
-  Discount ($\gamma$) & 0.95 (slightly reduced from the standard 0.99 to
-                       emphasise nearer-term outcomes in the battle horizon). \\
+  Discount ($\gamma$) & 0.97 based on a hyper parameter sweep. \\
   \bottomrule
 \end{tabularx}
 \end{center}
@@ -64,7 +63,11 @@ Chapter~\ref{ch:architecture}).
 \label{sec:reward_design}
 
 The reward function combines several components to provide dense learning signal
-while preserving the primacy of winning:
+while preserving the primacy of winning.  All rewards are multiplied by a
+global \texttt{reward\_scale}$\,=0.1$ before being returned to the agent, which
+scales returns from approximately $[-15, +15]$ to $[-1.5, +1.5]$.  This scaling
+was critical for value-function learning (see
+Section~\ref{sec:reward_scaling}).
 
 \begin{center}
 \small
@@ -94,76 +97,77 @@ while preserving the primacy of winning:
 The reward is computed each step by \texttt{poke-env}'s
 \texttt{reward\_computing\_helper}, parameterised by the active
 \texttt{RewardConfig}.  At the terminal step, explicit outcome rewards are
-applied on top.
-
-\subsection{Curriculum-Stage Reward Variants}
-
-Reward parameters are adjusted across curriculum stages to reflect increasing
-difficulty:
-
-\begin{center}
-\small
-\begin{tabularx}{0.95\textwidth}{l c c c}
-  \toprule
-  \textbf{Parameter} & \textbf{Stage 1: Warmup} & \textbf{Stage 2: Self-Play} & \textbf{Stage 3: Mixed} \\
-  \midrule
-  Victory / Defeat       & $\pm 10$ & $\pm 10$ & $\pm 10$ \\
-  HP weight              & 2.0      & 2.0      & 2.0      \\
-  Opponent fainted       & $+5.0$   & $+5.0$   & $+5.0$   \\
-  Own fainted penalty    & $-5.0$   & $-5.0$   & $-5.0$   \\
-  Step penalty           & $-0.005$ & $-0.005$ & $-0.005$ \\
-  Matchup weight         & 0.2      & 0.2      & 0.2      \\
-  Action quality weight  & 0.3      & 0.3      & 0.3      \\
-  \bottomrule
-\end{tabularx}
-\end{center}
+applied on top.  Reward parameters are adjusted across curriculum stages (see
+below). These were gradually introduced during development in descending order.
 
 \section{Curriculum Learning}
 \label{sec:curriculum}
 
 Due to the complexity of the full challenge, training follows a \textbf{curriculum
 learning} approach where the agent is first exposed to easy opponents and
-gradually faces stronger ones.  Curriculum stages are defined as:
+gradually faces stronger ones.  The curriculum currently has four stages:
+
+\begin{enumerate}
+  \item \textbf{Moves \& Switches Warmup.}
+        Opponent mix: 40\,\% random, 30\,\% \texttt{random\_no\_switch},
+        30\,\% self-play.  Promotion threshold: 65\,\% win rate.
+        Asymmetric rewards (victory $+8$, defeat $-10$) encourage caution.
+        Higher HP weight (3.0) and faint values ($\pm 6.0$) provide strong
+        per-step signal for learning basic move selection.
+
+  \item \textbf{Random, More Moves.}
+        Opponent mix: 70\,\% self-play, 10\,\% random,
+        20\,\% \texttt{random\_no\_switch}.  Promotion threshold: 20\,\% win
+        rate (intentionally low: the goal is exposure to self-play, not
+        mastery).  Victory reward raised to $+10$.  Large minimum sample
+        requirement (5\,000 episodes) ensures sufficient exposure before
+        progressing.
+
+  \item \textbf{Self-Play.}
+        Opponent mix: 60\,\% \texttt{random\_no\_switch},
+        40\,\% random.  Promotion threshold: 70\,\% win rate.
+        After the self-play exposure stage, the agent trains against
+        non-switching random opponents to solidify move selection skills.
+        Action quality weight increased to 0.4 to refine move choice.
+
+  \item \textbf{Mixed Final.}
+        Opponent mix: 50\,\% heuristic, 30\,\% self-play,
+        20\,\% \texttt{random\_no\_switch}.  Terminal stage (promotion
+        threshold 101\,\%, i.e.\ never promotes).  The agent faces the
+        strongest opponent mix, including the heuristic AI which considers
+        type effectiveness and switches strategically.
+\end{enumerate}
+
+% TODO: If a fifth stage is added, update the list above.
+
+\subsection{Per-Stage Reward Variants}
+
+Reward parameters are adjusted across stages to reflect changing difficulty:
 
 \begin{center}
 \small
-\begin{tabularx}{\textwidth}{l c c c}
+\begin{tabularx}{\textwidth}{l c c c c}
   \toprule
-  & \textbf{Stage 1: Random Warmup} & \textbf{Stage 2: Self-Play} & \textbf{Stage 3: Mixed} \\
+  \textbf{Parameter} & \textbf{Stage 1} & \textbf{Stage 2} & \textbf{Stage 3} & \textbf{Stage 4} \\
   \midrule
-  Opponent mix &
-    100\,\% \texttt{random\_no\_switch} &
-    80\,\% self-play / 20\,\% \texttt{random\_no\_switch} &
-    50\,\% heuristic / 30\,\% self-play / 20\,\% \texttt{random\_no\_switch} \\[4pt]
-  Promotion threshold &
-    70\,\% win rate &
-    85\,\% win rate &
-    101\,\% (terminal) \\[4pt]
-  Min.\ episodes &
-    100 &
-    100 &
-    100 \\
+  Victory / Defeat   & $+8$ / $-10$ & $\pm 10$ & $\pm 10$ & $\pm 10$ \\
+  HP weight          & 3.0   & 3.0   & 3.0   & 3.0   \\
+  Opp.\ fainted      & $+6.0$ & $+6.0$ & $+6.0$ & $+6.0$ \\
+  Own fainted        & $-6.0$ & $-6.0$ & $-6.0$ & $-6.0$ \\
+  Step penalty       & $-0.01$ & $-0.01$ & $-0.01$ & $-0.01$ \\
+  Matchup weight     & 0.1   & 0.1   & 0.1   & 0.1   \\
+  Action quality wt. & 0.3   & 0.3   & 0.4   & 0.4   \\
   \bottomrule
 \end{tabularx}
 \end{center}
 
-\textbf{Stage progression:}
-\begin{itemize}
-  \item \textbf{Random Warmup:} The agent plays against a random-move opponent
-        that never voluntarily switches.  This provides a low-variance signal
-        for learning basic move selection and type effectiveness.
-  \item \textbf{Self-Play:} The agent mostly plays against copies of itself
-        (with periodically updated weights), supplemented by random opponents.
-        Self-play creates a curriculum of gradually increasing difficulty as
-        the agent improves.
-  \item \textbf{Mixed:} The agent faces the strongest opponent mix, including
-        the heuristic AI (\texttt{SimpleHeuristicsPlayer}) which considers type
-        effectiveness and switches strategically.  This stage does not
-        promote---it represents the final training regime.
-\end{itemize}
+Note that Stage~1 uses asymmetric rewards (victory $+8$ vs.\ defeat $-10$) to
+discourage early aggression, and a higher step penalty ($-0.01$) to encourage
+efficient play from the start.
 
-Promotion decisions use a rolling window of the last 200 episodes (minimum 50
-samples required before promotion is considered).
+Promotion decisions use a rolling window of the last 300~episodes (minimum 50
+samples required before promotion is considered; minimum 300 episodes must
+elapse before any promotion). Total possible rewards is by design made in a way that can only increase with difficulty.
 
 \section{Self-Play Mechanism}
 \label{sec:self_play}
@@ -217,4 +221,4 @@ The environment supports four opponent categories:
 
 In the embedding layer, \texttt{random\_no\_switch} is mapped to the same
 bucket as \texttt{random} for the opponent-type feature, avoiding distribution
-shift at the observation level when mixing or swapping baselines.
+shift at the observation level when mixing or swapping baselines. From best to worst in terms of performance: heuristic, random no switch and random.

@@ -2,7 +2,7 @@
 \chapter{Game Environment \& Battle Mechanics}
 \label{ch:game_env}
 
-\section{Pok\'{e}mon Battles---Overview}
+\section{Pok\'{e}mon Battles: Overview}
 
 Pok\'{e}mon battles are turn-based strategy matches.  Each player brings a team
 of up to six Pok\'{e}mon, but usually only one is active at a time (singles
@@ -48,7 +48,7 @@ Each Pok\'{e}mon possesses:
                         entry). \\
   Held item           & A consumable or passive item that boosts stats,
                         heals, or triggers effects. \\
-  Base stats (6)      & HP, Attack, Defense, Sp.\ Atk, Sp.\ Def, Speed ---
+  Base stats (6)      & HP, Attack, Defense, Sp.\ Atk, Sp.\ Def, Speed:
                         determine overall power and role. \\
   \bottomrule
 \end{tabularx}
@@ -91,7 +91,7 @@ are permanently unavailable for subsequent battles.
 \section{Pok\'{e}mon Showdown Simulator}
 
 The project does not interact with an actual game client.  Instead, it uses
-\textbf{Pok\'{e}mon Showdown}---an open-source battle simulator that
+\textbf{Pok\'{e}mon Showdown}: an open-source battle simulator that
 implements official Pok\'{e}mon battle mechanics with high fidelity.  The
 simulator runs as a local Node.js server, enabling fast, programmatic battle
 execution.
@@ -129,7 +129,7 @@ up on ports 8000--8007 (see Chapter~\ref{ch:infrastructure}).
 
 The project extends \texttt{poke-env} with a custom player class
 (\texttt{RandomNoSwitchPlayer}) that samples uniformly among legal \emph{move}
-orders and never voluntarily switches---useful as a baseline opponent that
+orders and never voluntarily switches, useful as a baseline opponent that
 forces the agent to learn move selection before switching strategy.
 
 \section{Pok\'{e}mon Brilliant Diamond Context}
@@ -145,6 +145,6 @@ Generation~4 titles.  The choice is motivated by:
         system.
 \end{itemize}
 
-The gauntlet---the ordered sequence of battles the agent must
-complete---comprises 706 trainers extracted from BDSP gameplay data, ordered
+The gauntlet (the ordered sequence of battles the agent must
+complete) comprises 706 trainers extracted from BDSP gameplay data, ordered
 by ascending difficulty (level, team size).

@@ -94,13 +94,13 @@ and ensuring that each entity receives a unique embedding.
 \section{Position \& Role Embeddings}
 
 The transformer processes a set of 13 tokens.  Without positional information,
-self-attention is permutation-invariant---the model cannot distinguish between
+self-attention is permutation-invariant, meaning the model cannot distinguish between
 active and bench Pok\'{e}mon.  Two sets of learnable embeddings address this:
 
 \begin{itemize}
   \item \textbf{Position embeddings:} One learned vector per token position
         (13~positions $\to$ hidden dim).  Added after input projection.
-  \item \textbf{Role embeddings:} Five coarse roles---CLS (global), our
+  \item \textbf{Role embeddings:} Five coarse roles: CLS (global), our
         active, our bench, opponent active, opponent bench.  Shared across
         positions within the same role.
 \end{itemize}
@@ -137,7 +137,7 @@ effectively reducing model depth to two functional layers.
 \subsection{Cross-Team Attention Bias}
 
 A learnable \textbf{attention bias} is added to the self-attention scores to
-encourage the model to attend to the opponent's active Pok\'{e}mon---a
+encourage the model to attend to the opponent's active Pok\'{e}mon: a
 critical source of tactical information:
 
 \begin{center}
@@ -199,13 +199,8 @@ moves + 12~gimmick variants).  Compression to 14 actions was motivated by:
 \subsection{Action Masking}
 
 At each step, the environment provides an \texttt{action\_mask} of shape
-$(14,)$ indicating which actions are legal.  The model applies this mask by
-setting invalid-action logits to $-10^{8}$ before the softmax:
-
-\[
-  \pi(a \mid s) = \frac{\exp(\text{logit}_a) \cdot \mathbb{1}[\text{mask}_a = 1]}
-                       {\sum_{a'} \exp(\text{logit}_{a'}) \cdot \mathbb{1}[\text{mask}_{a'} = 1]}
-\]
+$(14,)$ indicating which actions are legal.  The model applies a mask by
+setting invalid-action logits to $-10^{8}$ before the softmax.
 
 This ensures the agent never selects an illegal action, regardless of its
 learned policy.  The mask accounts for fainted Pok\'{e}mon (cannot switch to

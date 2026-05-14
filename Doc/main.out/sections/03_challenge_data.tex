@@ -9,7 +9,7 @@ focuses on \textbf{battle sequences}.  The challenge is modelled as a graph of
 battles: each node represents a battle against a specific trainer team, and
 edges represent progression.
 
-In the simplest form---currently implemented---the challenge is a linear list
+In the simplest form (currently implemented), the challenge is a linear list
 of opponents.  The agent must beat all trainers in order, without losing.  If
 the agent loses a battle, the run ends and restarts from the beginning.
 
@@ -26,7 +26,7 @@ After each battle, the agent's resources are \emph{partially} restored:
 Usually, the agent may build a new team before each fight.  There are
 exceptions where the agent must battle through a sequence of opponents (up to
 five) before being allowed to change teams again.  The amount of information
-available to the team builder---complete, partial, or none---serves as a knob
+available to the team builder (complete, partial, or none) serves as a knob
 for testing agent competency.
 
 \section{Milestone Roadmap}
@@ -78,7 +78,7 @@ generated programmatically.  No personal data is involved.
   \textbf{File} & \textbf{Format} & \textbf{Content} \\
   \midrule
   \texttt{data/BDSP Trainer Data - v1.1.csv} & CSV &
-    Complete roster of 297 BDSP trainers with Pok\'{e}mon species, levels,
+    Complete roster of 706 BDSP trainers with Pok\'{e}mon species, levels,
     movesets, held items, and abilities. \\
   \texttt{data/bdsp\_gauntlet\_order.json} & JSON &
     Ordered list of 706 trainers defining the gauntlet sequence, sorted by
@@ -119,7 +119,7 @@ For reproducible evaluation, a set of frozen team configurations is maintained:
 
 \begin{itemize}
   \item \texttt{data/validation/gen8\_random\_battle\_team\_pairs.json}:
-        20 teams organised as 10 swapped pairs, yielding 40 battles per
+        20 teams organised as 10 swapped pairs, yielding 20 battles per opponent AI per
         evaluation run.
   \item \texttt{data/validation/gen8\_random\_battle\_mirror\_teams.json}:
         Mirror-matchup teams for symmetric evaluation.
