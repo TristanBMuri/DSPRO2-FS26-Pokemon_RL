@@ -480,9 +480,9 @@ def get_config(preset: str = "standard") -> TrainingConfig:
             total_timesteps=20_000_000,
             env=EnvironmentConfig(
                 player_team_path=None,
-                num_workers=6,
+                num_workers=12,
                 num_envs_per_worker=2, 
-                num_servers=6,
+                num_servers=12,
                 start_port=8000,
             ),
             model=ModelConfig(
