@@ -312,7 +312,7 @@ class TrainingConfig:
     """Main training configuration."""
 
     # Duration
-    total_timesteps: int = 6_000_000
+    total_timesteps: int = 100_000_000
 
     # Checkpointing
     checkpoint_dir: str = "checkpoints"
@@ -477,12 +477,12 @@ def get_config(preset: str = "standard") -> TrainingConfig:
             ),
         ),
         "pure_league_play": TrainingConfig(
-            total_timesteps=20_000_000,
+            total_timesteps=100_000_000,
             env=EnvironmentConfig(
                 player_team_path=None,
-                num_workers=8,
-                num_envs_per_worker=4, 
-                num_servers=8,
+                num_workers=6,
+                num_envs_per_worker=3, 
+                num_servers=6,
                 start_port=8000,
             ),
             model=ModelConfig(
@@ -510,7 +510,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                             victory_reward=20.0,
                             defeat_penalty=-20.0,
                             hp_value_weight=3.0,
-                            fainted_value=3.0,
+                            fainted_value=5.0,
                             fainted_penalty=0.0,
                             action_quality_weight=0.0,
                             matchup_reward_weight=0.0, 
