@@ -481,7 +481,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
             env=EnvironmentConfig(
                 player_team_path=None,
                 num_workers=6,
-                num_envs_per_worker=1, 
+                num_envs_per_worker=2, 
                 num_servers=6,
                 start_port=8000,
             ),

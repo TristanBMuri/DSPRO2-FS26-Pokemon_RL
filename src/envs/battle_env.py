@@ -239,56 +239,40 @@ class PokemonBattleEnv(SinglesEnv):
         return reward
 
     def _compute_configured_delta_reward(self, battle: AbstractBattle) -> float:
-        """Poke-env style delta reward with matchup shaping."""
         battle_key = getattr(battle, "battle_tag", f"battle_{id(battle)}")
         if battle_key not in self._reward_buffer:
             self._reward_buffer[battle] = 0.0
 
-        current_value = 0.0
+        state_value = 0.0
         hp_value = self.reward_config.hp_value_weight
-        fainted_value = self.reward_config.fainted_value
-        number_of_pokemons = 6
+        
+        our_hp = sum(m.current_hp_fraction for m in battle.team.values() if not m.fainted)
+        opp_hp = sum(m.current_hp_fraction for m in battle.opponent_team.values() if not m.fainted)
+        
+        unrevealed_opp = 6 - len(battle.opponent_team)
+        opp_hp += unrevealed_opp
+        
+        state_value += our_hp * hp_value
+        state_value -= opp_hp * hp_value
 
-        for mon in battle.team.values():
-            current_value += mon.current_hp_fraction * hp_value
-            if mon.fainted:
-                current_value += self.reward_config.fainted_penalty
+        reward_delta = state_value - self._reward_buffer[battle]
+        self._reward_buffer[battle] = state_value
 
-        current_value += (number_of_pokemons - len(battle.team)) * hp_value
-
-        for mon in battle.opponent_team.values():
-            current_value -= mon.current_hp_fraction * hp_value
-            if mon.fainted:
-                current_value += fainted_value
-
-        our_fainted = sum(1 for m in battle.team.values() if m.fainted)
-        opp_fainted = sum(1 for m in battle.opponent_team.values() if m.fainted)
-
-        current_value += (6 - our_fainted) * hp_value
-        current_value -= (6 - opp_fainted) * hp_value
-
-        # Type matchup shaping: reward favorable active matchups
+        step_reward = 0.0
+        
         if self.reward_config.matchup_reward_weight > 0:
-            current_value += (
-                self._compute_matchup_quality(battle)
-                * self.reward_config.matchup_reward_weight
-            )
+            step_reward += self._compute_matchup_quality(battle) * self.reward_config.matchup_reward_weight
 
-        # Action quality: reward picking effective moves + defensive awareness
         if self.reward_config.action_quality_weight > 0:
-            current_value += (
-                self._compute_action_quality(battle)
-                * self.reward_config.action_quality_weight
-            )
+            step_reward += self._compute_action_quality(battle) * self.reward_config.action_quality_weight
 
         if battle.won:
-            current_value += self.reward_config.victory_reward
+            step_reward += self.reward_config.victory_reward
         elif battle.lost:
-            current_value += self.reward_config.defeat_penalty
+            step_reward += self.reward_config.defeat_penalty
 
-        reward = current_value - self._reward_buffer[battle]
-        self._reward_buffer[battle] = current_value
-        return reward * self.reward_config.reward_scale
+        total_reward = reward_delta + step_reward
+        return total_reward * self.reward_config.reward_scale
 
     @staticmethod
     def _compute_matchup_quality(battle: AbstractBattle) -> float:
