@@ -59,14 +59,14 @@ class PPOConfig:
     lr: float = 0.0002
 
     # Discount and GAE
-    gamma: float = 0.97
+    gamma: float = 0.99
     lambda_: float = 0.87
 
     # PPO clipping
-    clip_param: float = 0.08
+    clip_param: float = 0.2
 
     # Entropy bonus (exploration)
-    entropy_coeff: float = 0.013
+    entropy_coeff: float = 0.005
 
     # Value function
     vf_loss_coeff: float = 0.5
@@ -98,7 +98,7 @@ class EnvironmentConfig:
     player_team_path: Optional[str] = "data/teams/player_team_2.txt"
 
     # MLflow experiment name when player_team_path is set (fixed-team training).
-    mlflow_experiment_fixed_team: str = "Pokemon_RL_Battler_FixedTeam"
+    mlflow_experiment_fixed_team: str = "Pokemon_RL_Marvin_Fixed"
 
     # Server settings
     showdown_host: str = "localhost"
@@ -145,7 +145,7 @@ class RewardConfig:
 
     # Global reward scale: multiplies all rewards before returning to the agent.
     # Scales returns from ~[-15, +15] to ~[-1.5, +1.5], making value regression easier.
-    reward_scale: float = 0.05
+    reward_scale: float = 0.1
 
 
 @dataclass
@@ -312,7 +312,7 @@ class TrainingConfig:
     """Main training configuration."""
 
     # Duration
-    total_timesteps: int = 10_000_000
+    total_timesteps: int = 100_000_000
 
     # Checkpointing
     checkpoint_dir: str = "checkpoints"
@@ -388,7 +388,7 @@ class TrainingConfig:
         }
 
 
-DEFAULT_MLFLOW_EXPERIMENT = "Pokemon_RL_Battler"
+DEFAULT_MLFLOW_EXPERIMENT = "Pokemon_RL_Marvin_Random"
 
 
 def resolve_mlflow_experiment_name(config: TrainingConfig) -> str:
@@ -476,7 +476,90 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                 sgd_minibatch_size=512,
             ),
         ),
+        "pure_league_play": TrainingConfig(
+            total_timesteps=100_000_000,
+            env=EnvironmentConfig(
+                player_team_path=None,
+                num_workers=8,
+                num_envs_per_worker=6, 
+                num_servers=8,
+                start_port=8000,
+            ),
+            model=ModelConfig(
+                num_transformer_layers=3,
+                hidden_dim=256,
+            ),
+            ppo=PPOConfig(
+                lr=0.0003,
+                gamma=0.99,
+                train_batch_size=8192,
+                sgd_minibatch_size=512,
+                clip_param=0.2,
+                entropy_coeff=0.005, 
+            ),
+            curriculum=CurriculumConfig(
+                enabled=True,
+                rolling_window_episodes=400,
+                min_episodes_before_promotion=1000, 
+                stages=[
+                    CurriculumStageConfig(
+                        name="warmup",
+                        promote_at_win_rate=0.65,
+                        min_samples_for_promotion=400,
+                        opponent_mix={"random": 0.6, "random_no_switch": 0.4},
+                        reward_config=RewardConfig(
+                            victory_reward=20.0,
+                            defeat_penalty=-20.0,
+                            hp_value_weight=3.0,
+                            fainted_value=5.0,
+                            fainted_penalty=5.0,
+                            action_quality_weight=0.0,
+                            matchup_reward_weight=0.0, 
+                            reward_scale=0.1,       
+                        )
+                    ),
+                    CurriculumStageConfig(
+                        name="heuristic_tactics",
+                        promote_at_win_rate=0.65, 
+                        min_samples_for_promotion=400,
+                        opponent_mix={"random_no_switch": 0.15, "heuristic": 0.60, "self": 0.25},
+                        reward_config=RewardConfig(
+                            victory_reward=20.0,
+                            defeat_penalty=-20.0,
+                            hp_value_weight=2.0,    
+                            fainted_value=3.0,
+                            fainted_penalty=-3.0,
+                            action_quality_weight=0.0, 
+                            matchup_reward_weight=0.0,
+                            reward_scale=0.1,
+                        )
+                    ),
+                    CurriculumStageConfig(
+                        name="league_training",
+                        promote_at_win_rate=2.0,    
+                        min_samples_for_promotion=999999,
+                        opponent_mix={
+                            "heuristic": 0.3, 
+                            "historical": 0.4, 
+                            "self": 0.3
+                        }, 
+                        reward_config=RewardConfig(
+                            victory_reward=25.0,    
+                            defeat_penalty=-25.0,
+                            hp_value_weight=0.0,
+                            fainted_value=0.0,
+                            fainted_penalty=0.0,
+                            action_quality_weight=0.0,
+                            matchup_reward_weight=0.0,
+                            reward_scale=0.1,
+                        )
+                    )
+                ]
+            )
+        ),
     }
+
+
 
     if preset not in presets:
         raise ValueError(f"Unknown preset: {preset}. Available: {list(presets.keys())}")
