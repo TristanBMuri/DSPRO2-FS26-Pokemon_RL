@@ -486,13 +486,13 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                 start_port=8000,
             ),
             model=ModelConfig(
-                num_transformer_layers=1, 
+                num_transformer_layers=2, 
             ),
             ppo=PPOConfig(
                 lr=0.0003,
                 gamma=0.99,
-                train_batch_size=8192,
-                sgd_minibatch_size=1024,
+                train_batch_size=4092,
+                sgd_minibatch_size=512,
                 clip_param=0.2,
                 entropy_coeff=0.005, 
             ),

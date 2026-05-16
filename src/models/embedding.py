@@ -65,6 +65,10 @@ GLOBAL_EXTRA_FEATURE_NAMES = [
     "can_dynamax",
     "can_mega_evolve",
     "can_z_move",
+    "move_1_multiplier",
+    "move_2_multiplier",
+    "move_3_multiplier",
+    "move_4_multiplier",
 ]
 
 
@@ -393,6 +397,7 @@ def _global_extra_features(
 ) -> np.ndarray:
     features = np.zeros(len(GLOBAL_EXTRA_FEATURE_NAMES), dtype=np.float32)
     opponent_key = _canonical_opponent_type(opponent_type)
+    
     if opponent_key == "random":
         features[0] = 1.0
     elif opponent_key == "heuristic":
@@ -405,12 +410,27 @@ def _global_extra_features(
     features[5] = 1.0 if bool(getattr(battle, "force_switch", False)) else 0.0
 
     active = getattr(battle, "active_pokemon", None)
+    opp_active = getattr(battle, "opponent_active_pokemon", None)
+    
     features[6] = 1.0 if active is not None and bool(getattr(active, "trapped", False)) else 0.0
     features[7] = min(float(len(getattr(battle, "available_moves", []) or [])) / 4.0, 1.0)
     features[8] = min(float(len(getattr(battle, "available_switches", []) or [])) / 6.0, 1.0)
     features[9] = 1.0 if bool(getattr(battle, "can_dynamax", False)) else 0.0
     features[10] = 1.0 if bool(getattr(battle, "can_mega_evolve", False)) else 0.0
     features[11] = 1.0 if bool(getattr(battle, "can_z_move", False)) else 0.0
+
+    # DAMAGE MULTIPLIER CHEAT SHEET
+    if active and opp_active and active.moves:
+        moves = list(active.moves.values())
+        for i in range(4):
+            if i < len(moves):
+                try:
+                    mult = opp_active.damage_multiplier(moves[i])
+
+                    features[12 + i] = min(float(mult) / 4.0, 1.0)
+                except Exception:
+                    features[12 + i] = 0.25
+                    
     return features
 
 
