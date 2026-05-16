@@ -486,7 +486,8 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                 start_port=8000,
             ),
             model=ModelConfig(
-                num_transformer_layers=2, 
+                num_transformer_layers=3,
+                hidden_dim=256,
             ),
             ppo=PPOConfig(
                 lr=0.0003,
