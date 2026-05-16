@@ -534,13 +534,17 @@ class CurriculumSingleAgentWrapper(SingleAgentWrapper):
         opponent_team: Optional[str] = None,
         model_config_dict: Optional[Dict] = None,
         selfplay_weights_path: Optional[str] = None,
+        selfplay_weights_paths: Optional[List[str]] = None,
     ):
         super().__init__(env, opponent)
         self._battle_format = battle_format
         self._server_configuration = server_configuration
         self._opponent_team = opponent_team
         self._model_config_dict = model_config_dict
-        self._selfplay_weights_path = selfplay_weights_path
+        # Support both single path (legacy) and list of paths (new pool-based self-play)
+        self._selfplay_weights_paths = selfplay_weights_paths or (
+            [selfplay_weights_path] if selfplay_weights_path else []
+        )
         self._opponent_mix = self._normalize_opponent_mix(opponent_mix)
         self._opponent_pool: Dict[str, Any] = {}
         initial_key = self._opponent_key_from_instance(opponent)
@@ -586,12 +590,28 @@ class CurriculumSingleAgentWrapper(SingleAgentWrapper):
     def _build_opponent(self, opponent_key: str):
         if opponent_key == "self":
             from src.training.self_play_player import SelfPlayPlayer
+            from pathlib import Path
 
             opponent_id = f"self_{uuid.uuid4().hex[:6]}"
             opponent_config = AccountConfiguration(opponent_id, None)
+
+            # Discover available checkpoints for pool-based self-play
+            weights_paths = self._selfplay_weights_paths
+            if not weights_paths and self._selfplay_weights_paths:
+                # If explicit list not provided, scan for numbered checkpoints
+                # in the same directory as the 'latest' checkpoint
+                latest_path = self._selfplay_weights_paths[0] if self._selfplay_weights_paths else None
+                if latest_path:
+                    pool_dir = Path(latest_path).parent
+                    numbered = sorted(pool_dir.glob("selfplay_step_*.pt"), key=lambda p: p.stat().st_mtime)
+                    if numbered:
+                        weights_paths = [str(p) for p in numbered]
+
+            single_path = weights_paths[-1] if weights_paths else None  # Most recent
             return SelfPlayPlayer(
                 model_config_dict=self._model_config_dict or {},
-                weights_path=self._selfplay_weights_path,
+                weights_path=single_path,
+                weights_paths=weights_paths,
                 battle_format=self._battle_format,
                 account_configuration=opponent_config,
                 server_configuration=self._server_configuration,
@@ -898,6 +918,7 @@ def create_env_creator(
     opponent_team: Optional[str] = None,
     model_config_dict: Optional[Dict] = None,
     selfplay_weights_path: Optional[str] = None,
+    selfplay_weights_paths: Optional[List[str]] = None,
 ):
     """
     Create an environment creator function for Ray RLlib.
@@ -912,6 +933,8 @@ def create_env_creator(
             {"random": 0.7, "heuristic": 0.3} or {"random_no_switch": 1.0}
         player_team: Optional fixed Showdown team text for the learning agent
         opponent_team: Optional fixed Showdown team text for the opponent
+        selfplay_weights_path: Single checkpoint path (legacy, use selfplay_weights_paths for pool)
+        selfplay_weights_paths: List of checkpoint paths for pool-based self-play
 
     Returns:
         Callable that creates environments
@@ -930,6 +953,8 @@ def create_env_creator(
             mix = {difficulty: 1.0}
         p_team = env_config.get("player_team", player_team)
         o_team = env_config.get("opponent_team", opponent_team)
+        # Support list of checkpoints from env_config for pool-based self-play
+        sp_paths = env_config.get("selfplay_weights_paths", selfplay_weights_paths)
 
         if env_config.get("server_port") is not None:
             port = int(env_config["server_port"])
@@ -997,6 +1022,7 @@ def create_env_creator(
             opponent_team=o_team,
             model_config_dict=model_config_dict,
             selfplay_weights_path=selfplay_weights_path,
+            selfplay_weights_paths=sp_paths,
         )
 
     return env_creator

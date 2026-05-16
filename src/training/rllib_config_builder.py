@@ -64,6 +64,7 @@ def register_environments(
         opponent_mix=(initial_stage.opponent_mix if initial_stage else None),
         model_config_dict=config.model.to_dict(),
         selfplay_weights_path=selfplay_abs,
+        selfplay_weights_paths=None,  
         player_team=player_team,
     )
     register_env(POKEMON_BATTLE_ENV_NAME, env_creator)

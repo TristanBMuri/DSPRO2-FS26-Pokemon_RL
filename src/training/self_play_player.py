@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import random
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import torch
 
@@ -23,15 +24,18 @@ from src.models.embedding import embed_battle
 class SelfPlayPlayer(Player):
     """poke-env Player whose ``choose_move()`` runs the training model locally.
 
-    At each checkpoint the trainer exports the raw model state dict to
-    ``checkpoints/selfplay_latest.pt``.  This player loads it on first use and
-    re-checks the file each turn so it picks up new weights automatically.
+    Supports sampling from a pool of past checkpoints to avoid the moving-target
+    problem. When ``weights_paths`` contains multiple checkpoints, one is sampled
+    randomly per episode (on reset) and fixed for that episode's duration.
+
+    For backwards compatibility, ``weights_path`` (single path) is still supported.
     """
 
     def __init__(
         self,
         model_config_dict: Dict[str, Any],
         weights_path: Optional[str] = None,
+        weights_paths: Optional[List[str]] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -48,7 +52,14 @@ class SelfPlayPlayer(Player):
         )
         self.model.eval()
 
-        self._weights_path = weights_path
+        # Support both single path (legacy) and list of paths
+        self._weights_paths: List[str] = []
+        if weights_paths:
+            self._weights_paths = [str(p) for p in weights_paths if p]
+        elif weights_path:
+            self._weights_paths = [str(weights_path)]
+
+        self._current_weights_path: Optional[str] = None
         self._last_mtime: float = 0.0
         self._load_count = 0
 
@@ -70,24 +81,30 @@ class SelfPlayPlayer(Player):
             "valid_action_count_count": 0,
         }
 
-        if weights_path:
-            self._try_load_weights()
+        # Sample initial checkpoint if pool provided
+        if self._weights_paths:
+            self._sample_and_load_checkpoint()
 
     # ------------------------------------------------------------------
     # Weight loading
     # ------------------------------------------------------------------
 
-    def _try_load_weights(self) -> None:
-        if not self._weights_path:
+    def _sample_and_load_checkpoint(self) -> None:
+        """Sample a checkpoint from the pool and load it (fixed for this episode)."""
+        if not self._weights_paths:
             return
-        path = Path(self._weights_path)
-        if not path.exists():
-            return
+        # Randomly sample from available checkpoints
+        self._current_weights_path = random.choice(self._weights_paths)
+        self._load_weights_from_path(self._current_weights_path)
+
+    def _load_weights_from_path(self, path: str) -> None:
+        """Load weights from a specific path."""
         try:
-            mtime = path.stat().st_mtime
-            if mtime == self._last_mtime:
+            p = Path(path)
+            if not p.exists():
                 return
-            state_dict = torch.load(path, map_location="cpu", weights_only=True)
+            mtime = p.stat().st_mtime
+            state_dict = torch.load(p, map_location="cpu", weights_only=True)
             self.model.load_state_dict(state_dict, strict=True)
             self._last_mtime = mtime
             self._lstm_states.clear()  # stale state incompatible with new weights
@@ -96,12 +113,35 @@ class SelfPlayPlayer(Player):
         except Exception as exc:
             print(f"[SelfPlayPlayer] FAILED to load weights from {path}: {exc!r}")
 
+    def _try_load_weights(self) -> None:
+        """Legacy: check for file updates (only used with single checkpoint)."""
+        if not self._current_weights_path:
+            return
+        # Only check for updates if we have a single checkpoint (backwards compat)
+        if len(self._weights_paths) > 1:
+            return  # Pool mode: fixed checkpoint per episode
+        try:
+            p = Path(self._current_weights_path)
+            if not p.exists():
+                return
+            mtime = p.stat().st_mtime
+            if mtime == self._last_mtime:
+                return
+            self._load_weights_from_path(self._current_weights_path)
+        except Exception:
+            pass
+
     # ------------------------------------------------------------------
     # Inference
     # ------------------------------------------------------------------
 
     def choose_move(self, battle: AbstractBattle):
-        self._try_load_weights()
+        # Detect new battle: if battle_tag not in LSTM states, resample checkpoint
+        is_new_battle = battle.battle_tag not in self._lstm_states
+        if is_new_battle and len(self._weights_paths) > 1:
+            self._sample_and_load_checkpoint()
+        else:
+            self._try_load_weights()
 
         # Prune LSTM cache for finished battles
         if battle.won or battle.lost:

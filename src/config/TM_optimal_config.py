@@ -76,10 +76,10 @@ class PPOConfig:
     grad_clip: float = 5.0
 
     # Batch sizes
-    train_batch_size: int = 4096
+    train_batch_size: int = 4096 + 1024
     # TODO: test this with different values.
-    sgd_minibatch_size: int = 512
-    num_sgd_iter: int = 8
+    sgd_minibatch_size: int = 1024
+    num_sgd_iter: int = 4
 
 
 @dataclass
@@ -203,7 +203,7 @@ class CurriculumConfig:
                 reward_config=RewardConfig(
                     victory_reward=8.0,
                     defeat_penalty=-10.0,
-                    hp_value_weight=3.0,
+                    hp_value_weight=0.3,
                     fainted_value=5.0,
                     fainted_penalty=-5.0,
                     step_penalty=-0.01,
@@ -218,10 +218,10 @@ class CurriculumConfig:
                 opponent_mix={"heuristic": 0.5, "self": 0.4, "random_no_switch": 0.1},
                 reward_config=RewardConfig(
                     victory_reward=10.0,
-                    defeat_penalty=-10.0,
-                    hp_value_weight=3.0,
-                    fainted_value=5.0,
-                    fainted_penalty=-5.0,
+                    defeat_penalty=-8.0,
+                    hp_value_weight=0.3,
+                    fainted_value=3.0,
+                    fainted_penalty=-3.0,
                     step_penalty=-0.01,
                     matchup_reward_weight=0.15,
                     action_quality_weight=0.25,
@@ -313,6 +313,7 @@ class TrainingConfig:
 
     # Self-play
     selfplay_weights_path: str = "checkpoints/selfplay_latest.pt"
+    selfplay_pool_size: int = 5  # Number of past checkpoints to retain for sampling (1 = only latest)
 
     def to_dict(self) -> Dict[str, Any]:
         return {

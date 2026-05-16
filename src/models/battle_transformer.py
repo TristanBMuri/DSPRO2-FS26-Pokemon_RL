@@ -84,6 +84,7 @@ class PokemonTransformerModel(nn.Module):
         self.use_lstm = cfg["use_lstm"]
         self.max_seq_len = cfg["max_seq_len"]
 
+        # Base token + 3 categorical embeddings
         self.total_token_dim = self.token_dim + 3 * self.embedding_dim
 
         # -----------------------------------------------------------------

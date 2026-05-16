@@ -602,15 +602,45 @@ class PokemonTrainer:
         return ckpt_path
 
     def _export_selfplay_weights(self) -> None:
-        """Export raw model state dict for self-play opponents to load."""
+        """Export raw model state dict for self-play opponents to load.
+
+        Saves both the 'latest' checkpoint for backwards compatibility,
+        and a numbered checkpoint for pool-based self-play. Maintains only
+        the most recent pool_size checkpoints to limit disk usage.
+        """
         try:
             module = self.algo.get_module("default_policy")
             state_dict = module.model.state_dict()
-            path = Path(os.path.abspath(self.config.selfplay_weights_path))
-            path.parent.mkdir(parents=True, exist_ok=True)
-            torch.save(state_dict, path)
+            base_path = Path(os.path.abspath(self.config.selfplay_weights_path))
+            base_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Always save 'latest' for backwards compatibility
+            torch.save(state_dict, base_path)
+
+            # Save numbered checkpoint for pool-based self-play
+            pool_size = getattr(self.config, "selfplay_pool_size", 1)
+            if pool_size > 1:
+                step = self.total_steps
+                numbered_path = base_path.parent / f"selfplay_step_{step}.pt"
+                torch.save(state_dict, numbered_path)
+
+                # Clean up old checkpoints beyond pool_size
+                self._cleanup_old_selfplay_checkpoints(base_path.parent, pool_size)
         except Exception as exc:
             print(f"[WARN] Failed to export self-play weights: {exc}")
+
+    def _cleanup_old_selfplay_checkpoints(self, pool_dir: Path, pool_size: int) -> None:
+        """Remove old self-play checkpoints, keeping only the most recent pool_size."""
+        try:
+            checkpoints = sorted(
+                pool_dir.glob("selfplay_step_*.pt"),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            for old_ckpt in checkpoints[pool_size:]:
+                old_ckpt.unlink()
+        except Exception:
+            pass  
 
     def _collect_and_log_selfplay_diagnostics(self) -> Dict[str, float]:
         """Collect self-play diagnostics from workers, log to file + return for MLflow."""
