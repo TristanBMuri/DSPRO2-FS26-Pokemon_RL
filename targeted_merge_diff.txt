@@ -1,0 +1,1463 @@
+ .python-version                        |   2 +-
+ README.md                              | 261 +++++++++++++----------------
+ mav_README.md                          |  50 ++++++
+ pyproject.toml                         |   4 +-
+ scripts/check_brain.py                 |  40 +++++
+ scripts/setup_training.sh              |   2 +-
+ scripts/spin_up_multiple_showdown.sh   |   2 +-
+ scripts/validate_checkpoint.py         |   2 +-
+ src/action_space.py                    |   8 +-
+ src/config/TM_optimal_config.py        |  97 ++++++++++-
+ src/envs/battle_env.py                 | 297 +++++++++++++--------------------
+ src/models/battle_transformer.py       |  54 +++---
+ src/models/embedding.py                |  20 +++
+ src/training/checkpointing.py          |  17 +-
+ src/training/historical_self_player.py | 124 ++++++++++++++
+ src/training/self_play_player.py       |  11 +-
+ src/training/trainer.py                |   5 +-
+ train_battler.py                       |   8 +-
+ 18 files changed, 633 insertions(+), 371 deletions(-)
+
+=== DETAILED CHANGES ===
+
+diff --git a/.python-version b/.python-version
+index 24ee5b1..e4fba21 100644
+--- a/.python-version
++++ b/.python-version
+@@ -1 +1 @@
+-3.13
++3.12
+diff --git a/README.md b/README.md
+index 7be3516..07eee7d 100644
+--- a/README.md
++++ b/README.md
+@@ -1,188 +1,167 @@
+-# DSPRO2: Pokemon RL Battler
++# DSPRO2: Pokémon RL Battler
+ 
+-Reinforcement learning project training PPO agents to play Pokemon battles (BDSP/Nuzlocke). Uses Ray RLlib for distributed training, PyTorch for neural networks, `poke-env` as the Gymnasium-compatible interface to local Pokemon Showdown servers, and MLflow for experiment tracking.
++## Dev Environment Setup
+ 
+-## Setup
++Follow these steps exactly to set up your local development environment. You will need Node.js (for the Showdown server) and Python (for the RL agent).
+ 
+-### Prerequisites
++### Step 1: Install `nvm` and Node.js
+ 
+-- **Node.js** (for the Pokemon Showdown server) — managed via `nvm`
+-- **Python 3.13** — managed via `uv`
+-- **MLflow credentials** — ask a team member
++The Pokémon Showdown server runs on Node.js. We use `nvm` (Node Version Manager) to ensure everyone is on the same version.
+ 
+-### 1. Install `nvm` and Node.js
++1. **Install `nvm`** (Mac/Linux):
++  ```bash
++   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
++  ```
++   *(Note: Restart your terminal after installing --> close and reopen VSCode).*
++2. **Install and use Node v22.12.0**:
++  ```bash
++   nvm install 22.12.0
++   nvm use 22.12.0
++  ```
+ 
+-```bash
+-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
+-# Restart your terminal, then:
+-nvm install 22.12.0
+-nvm use 22.12.0
+-```
++### Step 2: Install `uv` and Python Dependencies
+ 
+-### 2. Install `uv` and Python Dependencies
++This project uses [uv](https://docs.astral.sh/uv/) to manage Python 3.13 and all dependencies automatically. No manual `venv` activation is required.
+ 
+-```bash
+-curl -LsSf https://astral.sh/uv/install.sh | sh
+-uv sync
+-```
++1. **Install `uv`** (if you don't have it):
++  ```bash
++   curl -LsSf https://astral.sh/uv/install.sh | sh
++  ```
++2. **Install dependencies**:
++  From the root of this project, run:
++   *This creates a local `.venv` and installs the exact versions from `uv.lock` --> the file where all version dependencies are stored.*
+ 
+-This creates a local `.venv` and installs the exact versions from `uv.lock`.
++### Step 3: Environment Variables & MLflow
+ 
+-### 3. Environment Variables and MLflow
++We use MLflow to track training runs. 
+ 
+-```bash
+-cp .env-example .env
+-```
++1. Copy the example environment file:
++  ```bash
++   cp .env-example .env
++  ```
++2. Open `.env` and fill in the MLflow credentials (ask a team member for the details):
++  ```ini
++   MLFLOW_TRACKING_URI="https://mlflow-server-url.com"
++   MLFLOW_TRACKING_USERNAME="Username"
++   MLFLOW_TRACKING_PASSWORD="Password"
++  ```
+ 
+-Edit `.env` and fill in the MLflow credentials:
++### Step 4: Set Up the Pokémon Showdown Server
+ 
+-```ini
+-MLFLOW_TRACKING_URI="https://mlflow-server-url.com"
+-MLFLOW_TRACKING_USERNAME="Username"
+-MLFLOW_TRACKING_PASSWORD="Password"
+-```
++The RL agent needs local servers to battle against.
+ 
+-### 4. Pokemon Showdown Server
++1. Clone the server and install its dependencies:
++  ```bash
++   git clone https://github.com/smogon/pokemon-showdown.git
++   cd pokemon-showdown
++   npm install
++   cp config/config-example.js config/config.js
++   cd ..
++  ```
++   *(Note: If you encounter server throttling issues during training, check `pokemon-showdown/config/config.js` to adjust rate limits).*
+ 
+-```bash
+-git clone https://github.com/smogon/pokemon-showdown.git
+-cd pokemon-showdown
+-npm install
+-cp config/config-example.js config/config.js
+-cd ..
+-```
++---
+ 
+-If you encounter server throttling during training, adjust rate limits in `pokemon-showdown/config/config.js`.
++## Running the Project
+ 
+-### 5. Custom Showdown Formats
++### 1. Start the Showdown Servers
+ 
+-Sets up no-gimmick battle formats (no Dynamax, no Terastallize, no Sleep Clause). Run once, then restart servers.
++Before training, you need to spin up the local Showdown instances. We have scripts to handle this:
+ 
+-```bash
+-./scripts/setup_custom_formats.sh
+-```
++- **Setup Project first (also start 8 servers):**
++  ```bash
++  ./scripts/setup_training.sh
++  ./scripts/setup_customformats.sh
++  ```
++- **Stop all servers:**
++  ```bash
++  ./scripts/kill_all_showdown.sh
++  ```
++- **Start multiple servers after having set up once**
++  ```bash
++  ./scripts/spin_up_multiple_showdown.sh
++  ```
+ 
+-## Running
++### 2. Start Training
+ 
+-### Start Servers
++Use `uv run` to execute scripts within the correct environment. The main entry point is `train_battler.py`.
+ 
+ ```bash
+-# First-time setup (also starts 8 servers on ports 8000-8007)
+-./scripts/setup_training.sh
+-
+-# Start servers (after initial setup)
+-./scripts/spin_up_multiple_showdown.sh
+-
+-# Stop all servers
+-./scripts/kill_all_showdown.sh
++uv run train_battler.py --preset quick
+ ```
+ 
+-### Training
++Also run from time to time
+ 
+ ```bash
+-uv run train_battler.py --preset quick          # quick test run
+-uv run train_battler.py --preset standard        # default
+-uv run train_battler.py --preset optimal         # RTX 5090
+-uv run train_battler.py --preset memory_safe     # reduced RAM
+-uv run train_battler.py --preset large           # max resources
++uv cache clean
+ ```
+ 
+-Presets are defined in `src/config/TM_optimal_config.py`.
++*You can pass different presets (e.g., `standard`, `optimal`, `large`) defined in `src/config/TM_optimal_config.py` depending on your hardware capabilities.*
+ 
+-### Resume Training
++### 3. Resume Interrupted Training
+ 
+-Resume from a checkpoint and continue logging into the same MLflow run:
++If training is interrupted, you can continue from a saved RLlib checkpoint and keep logging into the same MLflow run.
+ 
+-```bash
+-uv run train_battler.py --preset optimal \
+-  --resume-checkpoint latest \
+-  --mlflow-run-id <RUN_ID>
+-```
++1. Find the MLflow run ID you want to continue (from your MLflow UI).
++2. Restart training with:
++  ```bash
++   uv run train_battler.py \
++     --preset optimal \
++     --resume-checkpoint latest \
++     --mlflow-run-id <MLFLOW_RUN_ID>
++  ```
+ 
+-- `--resume-checkpoint latest` picks the newest checkpoint under `checkpoints/`
+-- Pass a specific path instead of `latest` to resume from a particular checkpoint
+-- `--resume-checkpoint` alone resumes model state but creates a new MLflow run
+-- `--mlflow-run-id` alone continues logging but starts from a fresh model
++Notes:
+ 
+-### Validation
++- `--resume-checkpoint latest` picks the newest checkpoint under `checkpoint_dir` (default: `checkpoints`).
++- You can also pass a specific checkpoint path:
++  ```bash
++  uv run train_battler.py \
++    --preset optimal \
++    --resume-checkpoint "/absolute/path/to/checkpoints/step_1500000/checkpoint_000000" \
++    --mlflow-run-id <MLFLOW_RUN_ID>
++  ```
++- Resume both model + logs by using both flags together.
++- If you provide only `--resume-checkpoint`, model state resumes but MLflow creates a new run.
++- If you provide only `--mlflow-run-id`, logging continues in that run but training starts from a fresh model.
+ 
+-Benchmark a checkpoint against 3 opponent tiers (random, random_no_switch, heuristic):
++---
+ 
+-```bash
+-uv run scripts/validate_checkpoint.py \
+-  --checkpoint checkpoints/step_XXXXXX \
+-  --protocol benchmark \
+-  --preset standard
+-
+-# Stochastic policy (masked softmax sampling instead of argmax)
+-uv run scripts/validate_checkpoint.py \
+-  --checkpoint checkpoints/step_XXXXXX \
+-  --protocol benchmark \
+-  --preset standard \
+-  --explore
+-
+-# Quick 3-episode smoke test
+-uv run scripts/validate_checkpoint.py \
+-  --checkpoint checkpoints/step_XXXXXX \
+-  --protocol smoke \
+-  --preset quick
+-```
++## Project Structure
+ 
+-### Self-Play Diagnostics
++- `**train_battler.py**`: The main entry point for kicking off training.
++- `**src/**`: Core Python library.
++  - `**config/**`: Training, hardware, and reward configurations.
++  - `**envs/**`: Custom Gymnasium environments mapping RL to Pokémon Showdown (`battle_env.py`).
++  - `**models/**`: Custom neural network architectures (e.g., `battle_transformer.py`).
++  - `**teams/**`: AI-generated and static Pokémon teams for training.
++  - `**training/**`: Training orchestration and helper modules.
++    - `**trainer.py**`: Orchestration entrypoint (`PokemonTrainer`) that wires the training lifecycle.
++    - `**rllib_config_builder.py**`: RLlib PPO and environment registration builders.
++    - `**env_bridge.py**`: Worker/env bridge for curriculum payloads and env-emitted metrics.
++    - `**callbacks.py**`: Curriculum stage progression and checkpoint management helpers.
++    - `**resume.py**`: Checkpoint resume path resolution and step extraction.
++    - `**metrics/**`: Metric extraction/aggregation helpers (`ppo`, `episode`, `runtime`, flattening).
++    - `**monitoring/**`: Runtime system telemetry collectors (CPU/RAM/GPU).
++- `**scripts/**`: Executable bash scripts (server management, etc.).
++- `**examples/**`: Sandboxed scripts, notebooks, and reference players (e.g., `MaxDamagePlayer.py`).
++- `**data/**`: Datasets (e.g., BDSP Trainer Data CSVs).
+ 
+-30% self-play run that never promotes from stage 0. Useful for diagnosing opponent quality.
++---
+ 
+-```bash
+-uv run scripts/diagnose_selfplay.py --preset standard --timesteps 500000
+-```
++## Development Guide
+ 
+-### Hyperparameter Sweep
++### Managing Dependencies
+ 
+-Optuna TPE sweep, 500k steps per trial. Resumes from a SQLite database.
++If you need to add or remove Python libraries, use `uv`:
+ 
+ ```bash
+-uv run scripts/hparam_sweep.py --n-trials 50                # full sweep (~14h)
+-uv run scripts/hparam_sweep.py --n-trials 3 --timesteps 100000  # dry run
++uv add <package_name>
++uv remove <package_name>
+ ```
+ 
+-### Linting and Formatting
++**Important:** Always commit `uv.lock` and `pyproject.toml` after making dependency changes so the rest of the team stays in sync!
+ 
+-```bash
+-uv run ruff check .
+-uv run ruff format .
+-```
++### All Configs
+ 
+-### Dependency Management
+-
+-```bash
+-uv add <package>        # add a dependency
+-uv remove <package>     # remove a dependency
+-uv cache clean          # clean cache periodically
+-```
+-
+-Always commit `uv.lock` and `pyproject.toml` after dependency changes.
+-
+-## Project Structure
+-
+-```
+-train_battler.py          Entry point for training
+-src/
+-  config/                 Training, hardware, and reward configurations
+-  envs/                   Gymnasium environments wrapping Pokemon Showdown
+-  models/                 Neural network architectures (battle_transformer.py)
+-  teams/                  Pokemon team generation
+-  training/               Training orchestration
+-    trainer.py            PokemonTrainer — wires the full training lifecycle
+-    rllib_config_builder.py   PPO config and environment registration
+-    env_bridge.py         Worker-side bridge for curriculum and metrics
+-    callbacks.py          Curriculum progression and checkpoint management
+-    curriculum.py         Progressive difficulty scaling
+-    resume.py             Checkpoint path resolution
+-    metrics/              Metric extraction and aggregation
+-    monitoring/           Runtime telemetry (CPU/RAM/GPU)
+-  data/                   Dataset utilities
+-  validation/             Checkpoint evaluation and benchmarking
+-scripts/                  Server management, diagnostics, sweeps
+-data/                     BDSP trainer CSVs, team manifests, gauntlet order
+-examples/                 Sandbox scripts, notebooks, reference players
+-```
++Training configs are located in `src/config/TM_optimal_config.py`. Create or modify presets based on what your specific machine (CPU/GPU) can handle.
+\ No newline at end of file
+diff --git a/mav_README.md b/mav_README.md
+new file mode 100644
+index 0000000..e352f64
+--- /dev/null
++++ b/mav_README.md
+@@ -0,0 +1,50 @@
++./scripts/setup_training.sh 8 #run 12 showdown servers
++
++uv run --active train_battler.py --preset mav --num-servers 8 # start training
++
++SAVE_LEAGUE_HISTORY=1 uv run --active train_battler.py --preset pure_league_play --num-servers 8
++
++rm -rf checkpoints/*
++rm -rf logs/*
++
++
++
++SAVE_LEAGUE_HISTORY=1 uv run --active train_battler.py \
++  --preset pure_league_play \
++  --num-servers 8 \
++  --resume-checkpoint /home/sudome/DSPRO2-FS26-Pokemon_RL/checkpoints/final \
++  --mlflow-run-id d28ea360ftmb51400b9dc3fef8fbdfb37e
++
++./scripts/setup_training.sh 8
++rm -rf checkpoints/*
++rm -rf logs/*
++rm train.log 
++SAVE_LEAGUE_HISTORY=1 nohup uv run --active train_battler.py --preset pure_league_play --num-servers 8 >> train.log 2>&1 &
++
++SAVE_LEAGUE_HISTORY=1 uv run --active train_battler.py --preset pure_league_play --num-servers 8
++
++
++  while true; do
++  # 1. Get GPU stats
++  GPU=$(nvidia-smi --query-gpu=timestamp,name,memory.used,memory.total --format=csv,noheader)
++  
++  # 2. Get CPU usage (100 - idle percentage)
++  CPU=$(top -bn1 | grep '%Cpu' | awk '{print 100 - $8}')
++  
++  # 3. Get RAM usage percentage
++  RAM=$(free | awk '/Mem/{printf("%.1f", $3/$2 * 100)}')
++  
++  # 4. Stitch them together and append to the file
++  echo "$GPU, $CPU%, $RAM%" >> system_log.csv
++  
++  # 5. Wait 60 seconds
++  sleep 60
++  done
++
++for f in train_battler.py src/config/TM_optimal_config.py src/training/historical_self_player.py src/training/self_play_player.py src/training/callbacks.py src/training/curriculum.py src/training/trainer.py src/envs/battle_env.py ; do
++  echo "--- $f ---"
++  cat "$f"
++  echo ""
++done
++
++tree src/ scripts/ data/
+\ No newline at end of file
+diff --git a/pyproject.toml b/pyproject.toml
+index 2fb2b1a..bf71900 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -3,11 +3,11 @@ name = "dspro2-fs26-pokemon-rl"
+ version = "0.1.0"
+ description = "Add your description here"
+ readme = "README.md"
+-requires-python = ">=3.12"
++requires-python = "==3.12.*"
+ dependencies = [
+     "gymnasium<1.2.3",
+     "mlflow>=3.10.1",
+-    "numpy>=2.4.3",
++    "numpy==2.0.2",
+     "optuna>=4.8.0",
+     "poke-env>=0.12.0",
+     "python-dotenv>=1.2.2",
+diff --git a/scripts/check_brain.py b/scripts/check_brain.py
+new file mode 100644
+index 0000000..cad670d
+--- /dev/null
++++ b/scripts/check_brain.py
+@@ -0,0 +1,40 @@
++import json
++import numpy as np
++from pathlib import Path
++
++def check_token_saliency(json_path="logs/validation/decision_diagnostics_samples.json"):
++    try:
++        payload = json.loads(Path(json_path).read_text(encoding="utf-8"))
++        samples = payload.get("samples", [])
++        
++        recent_samples = samples[-20:]
++        
++        token_vectors = []
++        for row in recent_samples:
++            token_importance = row.get("diagnostics", {}).get("token_importance", [])
++            if token_importance and isinstance(token_importance, list):
++                first = token_importance[0]
++                if isinstance(first, list) and first:
++                    token_vectors.append([float(v) for v in first])
++        
++        if not token_vectors:
++            print("No token importance data found!")
++            return
++            
++        # Calculate the mean saliency across the recent steps
++        mean_saliency = np.mean(np.array(token_vectors), axis=0)
++        
++        print(f"--- Brain Saliency Check (Last {len(token_vectors)} steps) ---")
++        print(f"Token 0 (Global/Cheat Sheet):  {mean_saliency[0]:.4f}")
++        print(f"Token 1 (Our Active):          {mean_saliency[1]:.4f}")
++        print(f"Token 7 (Opponent Active):     {mean_saliency[7]:.4f}")
++        print("-" * 40)
++        print("All Tokens:")
++        for i, val in enumerate(mean_saliency):
++            print(f"  Token {i:02d}: {val:.4f}")
++            
++    except Exception as e:
++        print(f"Failed to read diagnostics: {e}")
++
++if __name__ == "__main__":
++    check_token_saliency()
+\ No newline at end of file
+diff --git a/scripts/setup_training.sh b/scripts/setup_training.sh
+index 4824818..f1a0c31 100755
+--- a/scripts/setup_training.sh
++++ b/scripts/setup_training.sh
+@@ -54,7 +54,7 @@ echo "[3/4] Registering custom battle formats..."
+ echo ""
+ echo "[4/4] Starting Pokemon Showdown servers..."
+ "$SCRIPT_DIR/kill_all_showdown.sh" 2>/dev/null || true
+-"$SCRIPT_DIR/spin_up_multiple_showdown.sh"
++"$SCRIPT_DIR/spin_up_multiple_showdown.sh" "${1:-8}"
+ 
+ # Wait for first server to respond
+ echo ""
+diff --git a/scripts/spin_up_multiple_showdown.sh b/scripts/spin_up_multiple_showdown.sh
+index 1412eeb..abd44c3 100755
+--- a/scripts/spin_up_multiple_showdown.sh
++++ b/scripts/spin_up_multiple_showdown.sh
+@@ -2,7 +2,7 @@
+ 
+ # Configuration
+ START_PORT=8000
+-N_SERVERS=8
++N_SERVERS=${1:-8}
+ SHOWDOWN_DIR="./pokemon-showdown"
+ 
+ # Check for node
+diff --git a/scripts/validate_checkpoint.py b/scripts/validate_checkpoint.py
+index 45d49e3..b62c618 100644
+--- a/scripts/validate_checkpoint.py
++++ b/scripts/validate_checkpoint.py
+@@ -45,7 +45,7 @@ def main() -> int:
+     )
+     parser.add_argument(
+         "--preset",
+-        choices=["quick", "standard", "memory_safe", "optimal", "large"],
++        choices=["quick", "standard", "memory_safe", "optimal", "large", "pure_league_play"],
+         default="quick",
+         help="Training config preset used to rebuild the RLlib module.",
+     )
+diff --git a/src/action_space.py b/src/action_space.py
+index ae5d1b6..04e355e 100644
+--- a/src/action_space.py
++++ b/src/action_space.py
+@@ -8,11 +8,11 @@ from poke_env.environment.singles_env import SinglesEnv
+ 
+ 
+ NATIVE_ACTION_SPACE_N = 22
+-COMPRESSED_ACTION_SPACE_N = 14
++COMPRESSED_ACTION_SPACE_N = 13
+ 
+ COMPRESSED_MOVE_ACTIONS = range(0, 4)
+ COMPRESSED_GIMMICK_ACTIONS = range(4, 8)
+-COMPRESSED_SWITCH_ACTIONS = range(8, 14)
++COMPRESSED_SWITCH_ACTIONS = range(8, 13)
+ 
+ NATIVE_SWITCH_ACTIONS = range(0, 6)
+ NATIVE_GIMMICK_OFFSETS = (10, 14, 18)
+@@ -50,8 +50,10 @@ def get_compressed_action_mask(battle: AbstractBattle) -> np.ndarray:
+     trapped = getattr(battle, "trapped", False)
+ 
+     # --- Switch actions (compressed 8-13) ---
+-    if not trapped:
++    if force_switch or not trapped:
+         _mark_available_switches(mask, battle)
++    # if force_switch:
++    #     _mark_available_switches(mask, battle)
+ 
+     # --- Move actions (compressed 0-3) ---
+     if active is not None and not force_switch:
+diff --git a/src/config/TM_optimal_config.py b/src/config/TM_optimal_config.py
+index 0a7aa5a..eca3b1a 100644
+--- a/src/config/TM_optimal_config.py
++++ b/src/config/TM_optimal_config.py
+@@ -59,14 +59,14 @@ class PPOConfig:
+     lr: float = 0.0002
+ 
+     # Discount and GAE
+-    gamma: float = 0.97
++    gamma: float = 0.99
+     lambda_: float = 0.87
+ 
+     # PPO clipping
+-    clip_param: float = 0.08
++    clip_param: float = 0.2
+ 
+     # Entropy bonus (exploration)
+-    entropy_coeff: float = 0.013
++    entropy_coeff: float = 0.005
+ 
+     # Value function
+     vf_loss_coeff: float = 0.5
+@@ -98,7 +98,7 @@ class EnvironmentConfig:
+     player_team_path: Optional[str] = "data/teams/player_team_2.txt"
+ 
+     # MLflow experiment name when player_team_path is set (fixed-team training).
+-    mlflow_experiment_fixed_team: str = "Pokemon_RL_Battler_FixedTeam"
++    mlflow_experiment_fixed_team: str = "Pokemon_RL_Marvin_Fixed"
+ 
+     # Server settings
+     showdown_host: str = "localhost"
+@@ -145,7 +145,7 @@ class RewardConfig:
+ 
+     # Global reward scale: multiplies all rewards before returning to the agent.
+     # Scales returns from ~[-15, +15] to ~[-1.5, +1.5], making value regression easier.
+-    reward_scale: float = 0.05
++    reward_scale: float = 0.1
+ 
+ 
+ @dataclass
+@@ -312,7 +312,7 @@ class TrainingConfig:
+     """Main training configuration."""
+ 
+     # Duration
+-    total_timesteps: int = 10_000_000
++    total_timesteps: int = 100_000_000
+ 
+     # Checkpointing
+     checkpoint_dir: str = "checkpoints"
+@@ -388,7 +388,7 @@ class TrainingConfig:
+         }
+ 
+ 
+-DEFAULT_MLFLOW_EXPERIMENT = "Pokemon_RL_Battler"
++DEFAULT_MLFLOW_EXPERIMENT = "Pokemon_RL_Marvin_Random"
+ 
+ 
+ def resolve_mlflow_experiment_name(config: TrainingConfig) -> str:
+@@ -476,8 +476,91 @@ def get_config(preset: str = "standard") -> TrainingConfig:
+                 sgd_minibatch_size=512,
+             ),
+         ),
++        "pure_league_play": TrainingConfig(
++            total_timesteps=100_000_000,
++            env=EnvironmentConfig(
++                player_team_path=None,
++                num_workers=8,
++                num_envs_per_worker=6, 
++                num_servers=8,
++                start_port=8000,
++            ),
++            model=ModelConfig(
++                num_transformer_layers=3,
++                hidden_dim=256,
++            ),
++            ppo=PPOConfig(
++                lr=0.0003,
++                gamma=0.99,
++                train_batch_size=8192,
++                sgd_minibatch_size=512,
++                clip_param=0.2,
++                entropy_coeff=0.005, 
++            ),
++            curriculum=CurriculumConfig(
++                enabled=True,
++                rolling_window_episodes=400,
++                min_episodes_before_promotion=1000, 
++                stages=[
++                    CurriculumStageConfig(
++                        name="warmup",
++                        promote_at_win_rate=0.65,
++                        min_samples_for_promotion=400,
++                        opponent_mix={"random": 0.6, "random_no_switch": 0.4},
++                        reward_config=RewardConfig(
++                            victory_reward=20.0,
++                            defeat_penalty=-20.0,
++                            hp_value_weight=3.0,
++                            fainted_value=5.0,
++                            fainted_penalty=5.0,
++                            action_quality_weight=0.0,
++                            matchup_reward_weight=0.0, 
++                            reward_scale=0.1,       
++                        )
++                    ),
++                    CurriculumStageConfig(
++                        name="heuristic_tactics",
++                        promote_at_win_rate=0.65, 
++                        min_samples_for_promotion=400,
++                        opponent_mix={"random_no_switch": 0.15, "heuristic": 0.60, "self": 0.25},
++                        reward_config=RewardConfig(
++                            victory_reward=20.0,
++                            defeat_penalty=-20.0,
++                            hp_value_weight=2.0,    
++                            fainted_value=3.0,
++                            fainted_penalty=-3.0,
++                            action_quality_weight=0.0, 
++                            matchup_reward_weight=0.0,
++                            reward_scale=0.1,
++                        )
++                    ),
++                    CurriculumStageConfig(
++                        name="league_training",
++                        promote_at_win_rate=2.0,    
++                        min_samples_for_promotion=999999,
++                        opponent_mix={
++                            "heuristic": 0.3, 
++                            "historical": 0.4, 
++                            "self": 0.3
++                        }, 
++                        reward_config=RewardConfig(
++                            victory_reward=25.0,    
++                            defeat_penalty=-25.0,
++                            hp_value_weight=0.0,
++                            fainted_value=0.0,
++                            fainted_penalty=0.0,
++                            action_quality_weight=0.0,
++                            matchup_reward_weight=0.0,
++                            reward_scale=0.1,
++                        )
++                    )
++                ]
++            )
++        ),
+     }
+ 
++
++
+     if preset not in presets:
+         raise ValueError(f"Unknown preset: {preset}. Available: {list(presets.keys())}")
+ 
+diff --git a/src/envs/battle_env.py b/src/envs/battle_env.py
+index accf962..9374705 100644
+--- a/src/envs/battle_env.py
++++ b/src/envs/battle_env.py
+@@ -120,6 +120,57 @@ class PokemonBattleEnv(SinglesEnv):
+         # PettingZoo-style observation_spaces dict keyed by agent
+         obs_space = get_observation_space()
+         self.observation_spaces = {agent: obs_space for agent in self.possible_agents}
++    
++    def action_to_order(self, action: int, battle: AbstractBattle, **kwargs):
++        """
++        Bypass poke-env's native integer mappings and dynamic arrays.
++        """
++        active = battle.active_pokemon
++        
++        # Safer access to the agent to satisfy Pylint and handle SinglesEnv structure
++        agent = getattr(self, "_player_role_to_agent", {}).get("agent0")
++        if agent is None:
++            # Fallback for initialization phases where agent might not be mapped yet
++            from poke_env.player import RandomPlayer as RP
++            return RP.choose_random_singles_move(battle)
++
++        # Move actions (compressed 0-3)
++        if 0 <= action <= 3:
++            if active and active.moves:
++                known_moves = list(active.moves.values())
++                if action < len(known_moves):
++                    return agent.create_order(known_moves[action])
++
++        # Gimmick actions (compressed 4-7)
++        elif 4 <= action <= 7:
++            if active and active.moves:
++                known_moves = list(active.moves.values())
++                slot = action - 4
++                if slot < len(known_moves):
++                    return agent.create_order(known_moves[slot], mega=True) 
++
++        # Switch actions (compressed 8-13) -> Maps to absolute team slots 0-5
++        elif 8 <= action <= 13:
++            slot_idx = action - 8
++            team_list = list(battle.team.values())
++            
++            if slot_idx < len(team_list):
++                target_mon = team_list[slot_idx]
++                
++                # PUNISH CURRENT SLOT: If it's already active, it's an illegal switch
++                if target_mon == active:
++                    # Let it fall through to absolute fallback and take the -10 penalty
++                    pass
++                
++                # Otherwise, check if it's alive and allowed to come out
++                elif target_mon in battle.available_switches:
++                    return agent.create_order(target_mon)
++
++        # Absolute Fallback using a unique alias to avoid Pylint W0621
++        from poke_env.player import RandomPlayer as RP
++        self._fallback_events_current_episode += 1
++        self._step_fallback_penalty = True
++        return RP.choose_random_singles_move(battle)
+ 
+     def embed_battle(self, battle: AbstractBattle) -> Dict[str, np.ndarray]:
+         """
+@@ -185,196 +236,64 @@ class PokemonBattleEnv(SinglesEnv):
+         elif battle.won or battle.lost:
+             # Refresh terminal marker while reward callbacks are still firing.
+             self._completed_battle_steps[battle_key] = self._env_step_counter
++            self._reward_buffer.pop(battle, None)
+ 
+-        return self._compute_configured_delta_reward(battle)
++        reward = float(self._compute_configured_delta_reward(battle))
++        
++        if getattr(self, "_step_fallback_penalty", False):
++            # Severe penalty for trying an illegal move
++            reward -= 6.0 
++            self._step_fallback_penalty = False
++            
++        return reward
+ 
+     def _compute_configured_delta_reward(self, battle: AbstractBattle) -> float:
+-        """Poke-env style delta reward with matchup shaping."""
+-        if battle not in self._reward_buffer:
++        battle_key = getattr(battle, "battle_tag", f"battle_{id(battle)}")
++        if battle_key not in self._reward_buffer:
+             self._reward_buffer[battle] = 0.0
+ 
+-        current_value = 0.0
++        state_value = 0.0
+         hp_value = self.reward_config.hp_value_weight
+-        fainted_value = self.reward_config.fainted_value
+-        number_of_pokemons = 6
+-
+-        for mon in battle.team.values():
+-            current_value += mon.current_hp_fraction * hp_value
+-            if mon.fainted:
+-                current_value += self.reward_config.fainted_penalty
+-
+-        current_value += (number_of_pokemons - len(battle.team)) * hp_value
+-
+-        for mon in battle.opponent_team.values():
+-            current_value -= mon.current_hp_fraction * hp_value
+-            if mon.fainted:
+-                current_value += fainted_value
+-
+-        current_value -= (number_of_pokemons - len(battle.opponent_team)) * hp_value
+-
+-        # Type matchup shaping: reward favorable active matchups
++        
++        our_hp = sum(m.current_hp_fraction for m in battle.team.values() if not m.fainted)
++        opp_hp = sum(m.current_hp_fraction for m in battle.opponent_team.values() if not m.fainted)
++        
++        unrevealed_opp = 6 - len(battle.opponent_team)
++        opp_hp += unrevealed_opp
++        
++        state_value += our_hp * hp_value
++        state_value -= opp_hp * hp_value
++
++        reward_delta = state_value - self._reward_buffer[battle]
++        self._reward_buffer[battle] = state_value
++
++        step_reward = 0.0
++        
+         if self.reward_config.matchup_reward_weight > 0:
+-            current_value += (
+-                self._compute_matchup_quality(battle)
+-                * self.reward_config.matchup_reward_weight
+-            )
++            step_reward += self._compute_matchup_quality(battle) * self.reward_config.matchup_reward_weight
+ 
+-        # Action quality: reward picking effective moves + defensive awareness
+         if self.reward_config.action_quality_weight > 0:
+-            current_value += (
+-                self._compute_action_quality(battle)
+-                * self.reward_config.action_quality_weight
+-            )
++            step_reward += self._compute_action_quality(battle) * self.reward_config.action_quality_weight
+ 
+         if battle.won:
+-            current_value += self.reward_config.victory_reward
++            step_reward += self.reward_config.victory_reward
+         elif battle.lost:
+-            current_value += self.reward_config.defeat_penalty
++            step_reward += self.reward_config.defeat_penalty
+ 
+-        reward = current_value - self._reward_buffer[battle]
+-        self._reward_buffer[battle] = current_value
+-        return reward * self.reward_config.reward_scale
++        total_reward = reward_delta + step_reward
++        return total_reward * self.reward_config.reward_scale
+ 
+     @staticmethod
+     def _compute_matchup_quality(battle: AbstractBattle) -> float:
+-        """Score the type effectiveness of our active's best move vs opponent active.
+-
+-        Returns a value in [-1.0, 1.0]:
+-          +1.0 = super-effective move available
+-           0.0 = neutral or no data
+-          -0.5 = only resisted moves
+-          -1.0 = opponent immune to all our moves
+-        """
+-        our = battle.active_pokemon
+-        opp = battle.opponent_active_pokemon
+-        if our is None or opp is None:
+-            return 0.0
+-
+-        opp_types = opp.types
+-        if not opp_types:
+-            return 0.0
+-
+-        best = 0.0
+-        any_offensive = False
+-        for move in our.moves.values():
+-            move_type = getattr(move, "type", None)
+-            if move_type is None:
+-                continue
+-            # Only consider damaging moves (physical/special)
+-            category = getattr(move, "category", None)
+-            if category is not None and getattr(category, "name", "") == "STATUS":
+-                continue
+-            try:
+-                mult = move_type.damage_multiplier(*opp_types)
+-            except Exception:
+-                continue
+-            any_offensive = True
+-            best = max(best, mult)
+-
+-        if not any_offensive:
+-            return 0.0
+-
+-        if best >= 2.0:
+-            return 1.0
+-        elif best >= 1.0:
+-            return 0.0
+-        elif best > 0.0:
+-            return -0.5
+-        else:
+-            return -1.0
++        """Stripped."""
++        return 0.0
+ 
+     def _compute_action_quality(self, battle: AbstractBattle) -> float:
+-        """Score the quality of the last action taken.
+-
+-        Offensive (action-level): penalizes picking a sub-optimal damaging move.
+-        Defensive (state-level): rewards when our active resists opponent's best move.
+-
+-        Returns a value roughly in [-1.5, 1.0].
+         """
+-        our = battle.active_pokemon
+-        opp = battle.opponent_active_pokemon
+-        if our is None or opp is None:
+-            return 0.0
+-
+-        score = 0.0
+-
+-        # --- Offensive component ---
+-        action = self._last_compressed_action
+-        is_move_action = 0 <= action <= 7  # moves (0-3) or gimmick moves (4-7)
+-        if is_move_action:
+-            move_slot = action if action < 4 else action - 4
+-            known_moves = list(our.moves.values())
+-
+-            if move_slot < len(known_moves):
+-                opp_types = opp.types
+-                if opp_types:
+-                    chosen_move = known_moves[move_slot]
+-                    chosen_cat = getattr(chosen_move, "category", None)
+-                    chosen_is_status = (
+-                        chosen_cat is not None
+-                        and getattr(chosen_cat, "name", "") == "STATUS"
+-                    )
+-
+-                    if not chosen_is_status:
+-                        # Compute effectiveness of chosen move
+-                        chosen_type = getattr(chosen_move, "type", None)
+-                        chosen_eff = 0.0
+-                        if chosen_type is not None:
+-                            try:
+-                                chosen_eff = chosen_type.damage_multiplier(*opp_types)
+-                            except Exception:
+-                                chosen_eff = 1.0
+-
+-                        # Find best effectiveness among all damaging moves
+-                        best_eff = 0.0
+-                        for m in known_moves:
+-                            m_type = getattr(m, "type", None)
+-                            if m_type is None:
+-                                continue
+-                            m_cat = getattr(m, "category", None)
+-                            if (
+-                                m_cat is not None
+-                                and getattr(m_cat, "name", "") == "STATUS"
+-                            ):
+-                                continue
+-                            try:
+-                                eff = m_type.damage_multiplier(*opp_types)
+-                            except Exception:
+-                                continue
+-                            best_eff = max(best_eff, eff)
+-
+-                        # Penalty proportional to how far from best
+-                        if best_eff > 0:
+-                            score -= best_eff - chosen_eff
+-                    # Status move: no penalty, no bonus (score += 0)
+-
+-        # --- Defensive component ---
+-        opp_moves = getattr(opp, "moves", None)
+-        if opp_moves:
+-            our_types = our.types
+-            if our_types:
+-                best_opp_eff = 0.0
+-                for m in opp_moves.values():
+-                    m_type = getattr(m, "type", None)
+-                    if m_type is None:
+-                        continue
+-                    m_cat = getattr(m, "category", None)
+-                    if m_cat is not None and getattr(m_cat, "name", "") == "STATUS":
+-                        continue
+-                    try:
+-                        eff = m_type.damage_multiplier(*our_types)
+-                    except Exception:
+-                        continue
+-                    best_opp_eff = max(best_opp_eff, eff)
+-
+-                if best_opp_eff == 0.0:
+-                    # Immune to opponent's best damaging move
+-                    score += 1.0
+-                elif best_opp_eff <= 0.5:
+-                    # Resists opponent's best move
+-                    score += 0.5
+-
+-        return score
++        Stripped down to prevent the agent from finding pacifist exploits.
++        Let the HP delta and Win/Loss rewards do the teaching.
++        """
++        return 0.0
+ 
+     def set_reward_config(self, reward_config: RewardConfig) -> None:
+         """Update reward configuration at runtime."""
+@@ -600,6 +519,18 @@ class CurriculumSingleAgentWrapper(SingleAgentWrapper):
+         if opponent_key == "heuristic":
+             opponent_class = SimpleHeuristicsPlayer
+             opponent_id = f"hrs_{uuid.uuid4().hex[:6]}"
++        elif opponent_key == "historical":
++            from src.training.historical_self_player import HistoricalSelfPlayer
++            opponent_id = f"hist_{uuid.uuid4().hex[:6]}"
++            opponent_config = AccountConfiguration(opponent_id, None)
++            return HistoricalSelfPlayer(
++                model_config_dict=self._model_config_dict or {},
++                weights_path=self._selfplay_weights_path,
++                battle_format=self._battle_format,
++                account_configuration=opponent_config,
++                server_configuration=self._server_configuration,
++                team=self._opponent_team,
++            )
+         elif opponent_key == "random_no_switch":
+             from src.envs.random_no_switch_player import RandomNoSwitchPlayer
+ 
+@@ -620,9 +551,13 @@ class CurriculumSingleAgentWrapper(SingleAgentWrapper):
+     def _opponent_key_from_instance(opponent: Any) -> str:
+         # Lazy import to avoid circular dependency at module load time.
+         from src.training.self_play_player import SelfPlayPlayer
++        from src.training.historical_self_player import HistoricalSelfPlayer
++
+ 
+         if isinstance(opponent, SelfPlayPlayer):
+             return "self"
++        if isinstance(opponent, HistoricalSelfPlayer):
++            return "historical"
+         if isinstance(opponent, SimpleHeuristicsPlayer):
+             return "heuristic"
+         from src.envs.random_no_switch_player import RandomNoSwitchPlayer
+@@ -680,24 +615,16 @@ class CurriculumSingleAgentWrapper(SingleAgentWrapper):
+         if action is not None:
+             action_int = int(action)
+             self.env._last_compressed_action = action_int
++            
++            # Record stats...
+             self._episode_total_actions += 1
+-            if is_compressed_switch_action(action_int):
++            if action_int >= 8: # is_compressed_switch_action
+                 self._episode_switch_actions += 1
+             else:
+                 self._episode_attack_actions += 1
+-            try:
+-                native_action = compressed_to_native_action(
+-                    action_int, self.env.battle1
+-                )
+-            except (ValueError, IndexError):
+-                native_action = find_safe_native_action(self.env.battle1)
+-            else:
+-                try:
+-                    SinglesEnv.action_to_order(
+-                        native_action, self.env.battle1, fake=False, strict=True
+-                    )
+-                except Exception:
+-                    native_action = find_safe_native_action(self.env.battle1)
++
++
++            native_action = action_int 
+         else:
+             native_action = action
+ 
+diff --git a/src/models/battle_transformer.py b/src/models/battle_transformer.py
+index bf80368..2b3a8b2 100644
+--- a/src/models/battle_transformer.py
++++ b/src/models/battle_transformer.py
+@@ -207,9 +207,14 @@ class PokemonTransformerModel(nn.Module):
+     def _embed_obs(self, obs_dict: Dict[str, TensorType]) -> TensorType:
+         """Project a flat (B', tokens, ...) obs dict to token embeddings."""
+         base_obs = obs_dict["obs"].float()
+-        species = obs_dict["species"].long()
+-        items = obs_dict["items"].long()
+-        abilities = obs_dict["abilities"].long()
++        
++        sp_max = self.species_embed.num_embeddings - 1
++        it_max = self.item_embed.num_embeddings - 1
++        ab_max = self.ability_embed.num_embeddings - 1
++
++        species = torch.clamp(obs_dict["species"].long(), 0, sp_max)
++        items = torch.clamp(obs_dict["items"].long(), 0, it_max)
++        abilities = torch.clamp(obs_dict["abilities"].long(), 0, ab_max)
+ 
+         species_emb = self.species_embed(species)
+         items_emb = self.item_embed(items)
+@@ -248,9 +253,15 @@ class PokemonTransformerModel(nn.Module):
+         self, obs_dict: Dict[str, TensorType]
+     ) -> Dict[str, TensorType]:
+         base_obs = obs_dict["obs"].float()
+-        species = obs_dict["species"].long()
+-        items = obs_dict["items"].long()
+-        abilities = obs_dict["abilities"].long()
++        
++        sp_max = self.species_embed.num_embeddings - 1
++        it_max = self.item_embed.num_embeddings - 1
++        ab_max = self.ability_embed.num_embeddings - 1
++
++        species = torch.clamp(obs_dict["species"].long(), 0, sp_max)
++        items = torch.clamp(obs_dict["items"].long(), 0, it_max)
++        abilities = torch.clamp(obs_dict["abilities"].long(), 0, ab_max)
++
+         return {
+             "base_obs": base_obs,
+             "species_emb": self.species_embed(species),
+@@ -566,45 +577,50 @@ class PokemonRLModule(TorchRLModule, ValueFunctionAPI):
+     def get_initial_state(self) -> Dict[str, Any]:
+         return self.model.get_initial_state()
+ 
+-    # ---- Forward passes -------------------------------------------------
+-
+     def _forward(self, batch: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+         obs_dict = batch[Columns.OBS]
+         state = batch.get(Columns.STATE_IN, None)
+         features, new_state, action_mask = self.model.compute_features(obs_dict, state)
+         logits, _values = self.model.heads_from_features(features, action_mask)
+ 
++        if action_mask is not None:
++            inf_mask = torch.clamp(torch.log(action_mask), min=-1e9)
++            logits = logits + inf_mask
++
+         output: Dict[str, Any] = {Columns.ACTION_DIST_INPUTS: logits}
+         if self.model.use_lstm:
+             output[Columns.STATE_OUT] = new_state
+         return output
+ 
+-    def _forward_inference(self, batch: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+-        with torch.no_grad():
+-            return self._forward(batch, **kwargs)
+-
+-    def _forward_exploration(self, batch: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+-        with torch.no_grad():
+-            return self._forward(batch, **kwargs)
+-
+     def _forward_train(self, batch: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+         obs_dict = batch[Columns.OBS]
+         state = batch.get(Columns.STATE_IN, None)
+         features, new_state, action_mask = self.model.compute_features(obs_dict, state)
+         logits, values = self.model.heads_from_features(features, action_mask)
+ 
++        if action_mask is not None:
++            logits = torch.where(action_mask <= 0, logits - 1e9, logits)
++  
++
+         output: Dict[str, Any] = {
+             Columns.ACTION_DIST_INPUTS: logits,
+             Columns.VF_PREDS: values,
+-            # Stash the trunk output so PPO's loss can re-use it via
+-            # ``compute_values(batch, embeddings=...)`` without rerunning the
+-            # transformer + LSTM.
+             Columns.EMBEDDINGS: features,
+         }
+         if self.model.use_lstm:
+             output[Columns.STATE_OUT] = new_state
+         return output
+ 
++    def _forward_inference(self, batch: Dict[str, Any], **kwargs) -> Dict[str, Any]:
++        with torch.no_grad():
++            return self._forward(batch, **kwargs)
++
++    def _forward_exploration(self, batch: Dict[str, Any], **kwargs) -> Dict[str, Any]:
++        with torch.no_grad():
++            return self._forward(batch, **kwargs)
++
++
++
+     # ---- ValueFunctionAPI ----------------------------------------------
+ 
+     def compute_values(
+diff --git a/src/models/embedding.py b/src/models/embedding.py
+index 85599c1..1091fe3 100644
+--- a/src/models/embedding.py
++++ b/src/models/embedding.py
+@@ -65,6 +65,10 @@ GLOBAL_EXTRA_FEATURE_NAMES = [
+     "can_dynamax",
+     "can_mega_evolve",
+     "can_z_move",
++    "move_1_multiplier",
++    "move_2_multiplier",
++    "move_3_multiplier",
++    "move_4_multiplier",
+ ]
+ 
+ 
+@@ -393,6 +397,7 @@ def _global_extra_features(
+ ) -> np.ndarray:
+     features = np.zeros(len(GLOBAL_EXTRA_FEATURE_NAMES), dtype=np.float32)
+     opponent_key = _canonical_opponent_type(opponent_type)
++    
+     if opponent_key == "random":
+         features[0] = 1.0
+     elif opponent_key == "heuristic":
+@@ -405,12 +410,27 @@ def _global_extra_features(
+     features[5] = 1.0 if bool(getattr(battle, "force_switch", False)) else 0.0
+ 
+     active = getattr(battle, "active_pokemon", None)
++    opp_active = getattr(battle, "opponent_active_pokemon", None)
++    
+     features[6] = 1.0 if active is not None and bool(getattr(active, "trapped", False)) else 0.0
+     features[7] = min(float(len(getattr(battle, "available_moves", []) or [])) / 4.0, 1.0)
+     features[8] = min(float(len(getattr(battle, "available_switches", []) or [])) / 6.0, 1.0)
+     features[9] = 1.0 if bool(getattr(battle, "can_dynamax", False)) else 0.0
+     features[10] = 1.0 if bool(getattr(battle, "can_mega_evolve", False)) else 0.0
+     features[11] = 1.0 if bool(getattr(battle, "can_z_move", False)) else 0.0
++
++    # DAMAGE MULTIPLIER CHEAT SHEET
++    if active and opp_active and active.moves:
++        moves = list(active.moves.values())
++        for i in range(4):
++            if i < len(moves):
++                try:
++                    mult = opp_active.damage_multiplier(moves[i])
++
++                    features[12 + i] = min(float(mult) / 4.0, 1.0)
++                except Exception:
++                    features[12 + i] = 0.25
++                    
+     return features
+ 
+ 
+diff --git a/src/training/checkpointing.py b/src/training/checkpointing.py
+index 06afccd..6dd278d 100644
+--- a/src/training/checkpointing.py
++++ b/src/training/checkpointing.py
+@@ -1,7 +1,8 @@
++import os
+ import shutil
+ from pathlib import Path
+ from typing import List
+-
++import threading # <--- ADD THIS
+ 
+ class CheckpointManager:
+     """
+@@ -31,6 +32,18 @@ class CheckpointManager:
+             if old_ckpt.exists():
+                 shutil.rmtree(old_ckpt, ignore_errors=True)
+ 
++        if os.environ.get("SAVE_LEAGUE_HISTORY") == "1":
++            latest_pt = self.checkpoint_dir / "selfplay_latest.pt"
++            history_dir = self.checkpoint_dir / "history"
++            
++            try:
++                if latest_pt.exists():
++                    history_dir.mkdir(exist_ok=True)
++                    history_file = history_dir / f"selfplay_step_{step}.pt"
++                    shutil.copy2(latest_pt, history_file)
++            except Exception as e:
++                print(f"Archiver failed: {e}")
++
+         return checkpoint_path
+ 
+     def load_latest(self, algo) -> bool:
+@@ -41,4 +54,4 @@ class CheckpointManager:
+         latest = self.checkpoints[-1]
+         algo.load(str(latest))
+         print(f"Loaded checkpoint: {latest}")
+-        return True
++        return True
+\ No newline at end of file
+diff --git a/src/training/historical_self_player.py b/src/training/historical_self_player.py
+new file mode 100644
+index 0000000..8dc3ebb
+--- /dev/null
++++ b/src/training/historical_self_player.py
+@@ -0,0 +1,124 @@
++import random
++import time
++import gc
++from pathlib import Path
++from typing import Dict, Any, Optional
++
++import torch
++from poke_env.player import RandomPlayer
++from poke_env.battle.abstract_battle import AbstractBattle
++
++# Import your SelfPlayPlayer to inherit its inference engine
++from src.training.self_play_player import SelfPlayPlayer
++
++class HistoricalSelfPlayer(SelfPlayPlayer):
++    """
++    Self-play opponent that selects a historical checkpoint 
++    and uses it for a batch of battles to simulate league play.
++    """
++    def __init__(
++        self, 
++        model_config_dict: Dict[str, Any], 
++        weights_path: Optional[str] = None, 
++        **kwargs
++    ):
++        super().__init__(
++            model_config_dict=model_config_dict, 
++            weights_path=weights_path, 
++            **kwargs
++        )
++        # MEMORY LEAK FIX 1: Force this specific opponent model strictly to the CPU.
++        # This keeps the VRAM entirely free for the main RLlib trainer.
++        self.model.to("cpu")
++        
++        self._current_brain_path = None
++        self._battles_played_with_current = 0
++
++    def _try_load_weights(self) -> None:
++        # Override the base class's per-turn mtime check.
++        pass
++
++    def _load_random_historical_brain(self) -> None:
++        """Picks a random .pt file, strictly avoiding files currently being written."""
++        if not self._weights_path:
++            return
++            
++        base_dir = Path(self._weights_path).parent
++        history_dir = base_dir / "history"
++        
++        pt_files = []
++        current_time = time.time()
++        
++        # ZIP ERROR FIX 1: Only look at files that are at least 10 seconds old.
++        # This makes it mathematically impossible to load a half-written file.
++        if history_dir.exists() and history_dir.is_dir():
++            for f in history_dir.glob("*.pt"):
++                try:
++                    if current_time - f.stat().st_mtime > 10.0:
++                        pt_files.append(f)
++                except OSError:
++                    pass
++                    
++        # Fallback to the active weights if history is empty
++        if not pt_files:
++            target_path = Path(self._weights_path)
++            try:
++                if target_path.exists() and (current_time - target_path.stat().st_mtime > 10.0):
++                    pt_files = [target_path]
++            except OSError:
++                pass
++                
++        if not pt_files:
++            return 
++
++        target_path = random.choice(pt_files)
++        
++        if target_path == self._current_brain_path:
++            self._battles_played_with_current = 0
++            return
++            
++        try:
++            state_dict = torch.load(target_path, map_location="cpu", weights_only=True)
++            self.model.load_state_dict(state_dict, strict=True)
++            
++            self._lstm_states.clear()
++            self._load_count += 1
++            self._diag["weight_load_count"] += 1
++            self._current_brain_path = target_path
++            self._battles_played_with_current = 0  
++            
++            # MEMORY LEAK FIX 2: Explicitly sever the reference to the loaded tensors 
++            # and force Python's garbage collector to run instantly.
++            del state_dict
++            gc.collect()
++            
++        except Exception:
++            pass
++
++    def choose_move(self, battle: AbstractBattle):
++        # Clean up memory
++        if getattr(battle, "finished", False) or battle.won or battle.lost:
++            self._lstm_states.pop(battle.battle_tag, None)
++
++        if len(self._lstm_states) > 50:
++            oldest_keys = list(self._lstm_states.keys())[:-20]
++            for k in oldest_keys:
++                self._lstm_states.pop(k, None)
++
++        # If it's a new battle
++        if battle.battle_tag not in self._lstm_states:
++            self._battles_played_with_current += 1
++            
++            # ZIP ERROR FIX 2 (I/O Shield): Don't swap brains every single battle. 
++            # Play 20 matches with a historical model before swapping. 
++            # This drops disk usage by 95% and stops the stuttering.
++            if self._current_brain_path is None or self._battles_played_with_current > 20:
++                self._load_random_historical_brain()
++                
++            self._lstm_states[battle.battle_tag] = None
++
++        try:
++            return self._inference_move(battle)
++        except Exception:
++            self._diag["fallback_count"] += 1
++            return RandomPlayer.choose_random_singles_move(battle)
+\ No newline at end of file
+diff --git a/src/training/self_play_player.py b/src/training/self_play_player.py
+index 3f728ea..11768c3 100644
+--- a/src/training/self_play_player.py
++++ b/src/training/self_play_player.py
+@@ -103,10 +103,14 @@ class SelfPlayPlayer(Player):
+     def choose_move(self, battle: AbstractBattle):
+         self._try_load_weights()
+ 
+-        # Prune LSTM cache for finished battles
+         if battle.won or battle.lost:
+             self._lstm_states.pop(battle.battle_tag, None)
+ 
++        if len(self._lstm_states) > 50:
++            oldest_keys = list(self._lstm_states.keys())[:-20]
++            for k in oldest_keys:
++                self._lstm_states.pop(k, None)
++
+         try:
+             return self._inference_move(battle)
+         except Exception:
+@@ -161,6 +165,9 @@ class SelfPlayPlayer(Player):
+ 
+             logits, _ = self.model.heads_from_features(features, mask)
+ 
++        action_mask_tensor = obs_tensors["action_mask"].squeeze(0)
++        logits[action_mask_tensor == 0] = -1e9
++        
+         # 4. Sample from softmax distribution (temperature < 1.0 = sharper)
+         temperature = 0.8
+         probs = torch.softmax(logits / temperature, dim=-1)
+@@ -207,7 +214,7 @@ class SelfPlayPlayer(Player):
+                 known_moves = list(active.moves.values())
+                 slot = action - 4
+                 if slot < len(known_moves):
+-                    return self.create_order(known_moves[slot])
++                    return self.create_order(known_moves[slot], mega=True)
+ 
+         # Switch actions (compressed 8-13)
+         elif action in COMPRESSED_SWITCH_ACTIONS:
+diff --git a/src/training/trainer.py b/src/training/trainer.py
+index 482da75..e7d1f4d 100644
+--- a/src/training/trainer.py
++++ b/src/training/trainer.py
+@@ -313,7 +313,7 @@ class PokemonTrainer:
+                     prev_wall_time = now
+                     metrics.update(self.system_metrics.collect())
+                     metrics.update(collect_env_memory_sentinels(self.algo))
+-                    metrics.update(self._record_decision_diagnostics())
++                    # metrics.update(self._record_decision_diagnostics())
+ 
+                     try:
+                         mlflow.log_metrics(metrics, step=int(self.total_steps))
+@@ -597,7 +597,8 @@ class PokemonTrainer:
+     def _save_checkpoint(self) -> Path:
+         ckpt_path = self.checkpoint_mgr.save_checkpoint(self.algo, self.total_steps)
+         self._last_checkpoint_step = self.total_steps
+-        self._export_selfplay_weights()
++        if self.iteration % 10 == 0:
++            self._export_selfplay_weights()
+         print(f"Checkpoint saved: {ckpt_path}")
+         return ckpt_path
+ 
+diff --git a/train_battler.py b/train_battler.py
+index ca1349a..cda75e6 100644
+--- a/train_battler.py
++++ b/train_battler.py
+@@ -18,7 +18,7 @@ Requirements:
+ import argparse
+ import mlflow
+ from dotenv import load_dotenv, find_dotenv
+-
++import os
+ 
+ def main():
+     load_dotenv(find_dotenv())
+@@ -32,11 +32,11 @@ def main():
+     parser.add_argument(
+         "--preset",
+         type=str,
+-        default="standard",
+-        choices=["quick", "standard", "memory_safe", "optimal", "large"],
++        default="standard", 
++        choices=["quick", "standard", "memory_safe", "optimal", "large", "mav", "pure_league_play"],
+         help="Configuration preset (default: standard)",
+     )
+-
++    
+     # Timesteps
+     parser.add_argument(
+         "--timesteps", type=int, default=None, help="Override total timesteps"

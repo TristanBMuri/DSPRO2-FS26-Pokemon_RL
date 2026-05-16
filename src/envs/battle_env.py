@@ -149,13 +149,22 @@ class PokemonBattleEnv(SinglesEnv):
                 if slot < len(known_moves):
                     return agent.create_order(known_moves[slot], mega=True) 
 
-        # Switch actions (compressed 8-13)
+        # Switch actions (compressed 8-13) -> Maps to absolute team slots 0-5
         elif 8 <= action <= 13:
-            switch_idx = action - 8
+            slot_idx = action - 8
             team_list = list(battle.team.values())
-            bench = [mon for mon in team_list if mon is not active]
-            if switch_idx < len(bench):
-                return agent.create_order(bench[switch_idx])
+            
+            if slot_idx < len(team_list):
+                target_mon = team_list[slot_idx]
+                
+                # PUNISH CURRENT SLOT: If it's already active, it's an illegal switch
+                if target_mon == active:
+                    # Let it fall through to absolute fallback and take the -10 penalty
+                    pass
+                
+                # Otherwise, check if it's alive and allowed to come out
+                elif target_mon in battle.available_switches:
+                    return agent.create_order(target_mon)
 
         # Absolute Fallback using a unique alias to avoid Pylint W0621
         from poke_env.player import RandomPlayer as RP
