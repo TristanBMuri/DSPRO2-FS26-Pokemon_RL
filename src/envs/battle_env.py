@@ -233,7 +233,7 @@ class PokemonBattleEnv(SinglesEnv):
         
         if getattr(self, "_step_fallback_penalty", False):
             # Severe penalty for trying an illegal move
-            reward -= 2.0 
+            reward -= 6.0 
             self._step_fallback_penalty = False
             
         return reward
@@ -428,7 +428,7 @@ class PokemonBattleEnv(SinglesEnv):
 
         # If no legal action could be verified, return default action.
         self._fallback_events_current_episode += 1
-        return np.int64(0)
+        return np.int64(-2)
 
 
 class CurriculumSingleAgentWrapper(SingleAgentWrapper):

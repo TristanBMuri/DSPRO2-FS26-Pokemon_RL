@@ -50,11 +50,10 @@ def get_compressed_action_mask(battle: AbstractBattle) -> np.ndarray:
     trapped = getattr(battle, "trapped", False)
 
     # --- Switch actions (compressed 8-13) ---
-    # if not trapped:
-    #     _mark_available_switches(mask, battle)
-    # should make it kamikaze it self
-    if force_switch:
+    if force_switch or not trapped:
         _mark_available_switches(mask, battle)
+    # if force_switch:
+    #     _mark_available_switches(mask, battle)
 
     # --- Move actions (compressed 0-3) ---
     if active is not None and not force_switch:

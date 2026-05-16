@@ -15,6 +15,13 @@ SAVE_LEAGUE_HISTORY=1 uv run --active train_battler.py \
   --resume-checkpoint /home/sudome/DSPRO2-FS26-Pokemon_RL/checkpoints/final \
   --mlflow-run-id d28ea360ftmb51400b9dc3fef8fbdfb37e
 
+./scripts/setup_training.sh 6
+rm -rf checkpoints/*
+rm -rf logs/*
+rm train.log 
+SAVE_LEAGUE_HISTORY=1 nohup uv run --active train_battler.py --preset pure_league_play --num-servers 6 >> train.log 2>&1 &
+
+SAVE_LEAGUE_HISTORY=1 uv run --active train_battler.py --preset pure_league_play --num-servers 6
 
 
   while true; do
@@ -34,18 +41,10 @@ SAVE_LEAGUE_HISTORY=1 uv run --active train_battler.py \
   sleep 60
   done
 
-cat train_battler.py 
-cat src/config/TM_optimal_config.py 
-cat src/training/historical_self_player.py
-cat src/training/self_play_player.py
-cat src/training/callbacks.py
-cat src/training/curriculum.py
+for f in train_battler.py src/config/TM_optimal_config.py src/training/historical_self_player.py src/training/self_play_player.py src/training/callbacks.py src/training/curriculum.py src/training/trainer.py src/envs/battle_env.py ; do
+  echo "--- $f ---"
+  cat "$f"
+  echo ""
+done
 
-tree src/
-tree scripts/
-tree data/
-
-
-git clone https://github.com/TristanBMuri/DSPRO2-FS26-Pokemon_RL.git
-cd DSPRO2-FS26-Pokemon_RL
-git checkout marv-dev
+tree src/ scripts/ data/
