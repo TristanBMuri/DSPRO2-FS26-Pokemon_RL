@@ -15,13 +15,13 @@ SAVE_LEAGUE_HISTORY=1 uv run --active train_battler.py \
   --resume-checkpoint /home/sudome/DSPRO2-FS26-Pokemon_RL/checkpoints/final \
   --mlflow-run-id d28ea360ftmb51400b9dc3fef8fbdfb37e
 
-./scripts/setup_training.sh 6
+./scripts/setup_training.sh 8
 rm -rf checkpoints/*
 rm -rf logs/*
 rm train.log 
-SAVE_LEAGUE_HISTORY=1 nohup uv run --active train_battler.py --preset pure_league_play --num-servers 6 >> train.log 2>&1 &
+SAVE_LEAGUE_HISTORY=1 nohup uv run --active train_battler.py --preset pure_league_play --num-servers 8 >> train.log 2>&1 &
 
-SAVE_LEAGUE_HISTORY=1 uv run --active train_battler.py --preset pure_league_play --num-servers 6
+SAVE_LEAGUE_HISTORY=1 uv run --active train_battler.py --preset pure_league_play --num-servers 8
 
 
   while true; do

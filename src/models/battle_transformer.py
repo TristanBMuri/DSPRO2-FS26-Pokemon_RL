@@ -208,9 +208,13 @@ class PokemonTransformerModel(nn.Module):
         """Project a flat (B', tokens, ...) obs dict to token embeddings."""
         base_obs = obs_dict["obs"].float()
         
-        species = torch.clamp(obs_dict["species"].long(), 0, self.species_vocab_size - 1)
-        items = torch.clamp(obs_dict["items"].long(), 0, self.item_vocab_size - 1)
-        abilities = torch.clamp(obs_dict["abilities"].long(), 0, self.ability_vocab_size - 1)
+        sp_max = self.species_embed.num_embeddings - 1
+        it_max = self.item_embed.num_embeddings - 1
+        ab_max = self.ability_embed.num_embeddings - 1
+
+        species = torch.clamp(obs_dict["species"].long(), 0, sp_max)
+        items = torch.clamp(obs_dict["items"].long(), 0, it_max)
+        abilities = torch.clamp(obs_dict["abilities"].long(), 0, ab_max)
 
         species_emb = self.species_embed(species)
         items_emb = self.item_embed(items)
@@ -250,10 +254,13 @@ class PokemonTransformerModel(nn.Module):
     ) -> Dict[str, TensorType]:
         base_obs = obs_dict["obs"].float()
         
-        # FIX: Clamp indices here too!
-        species = torch.clamp(obs_dict["species"].long(), 0, self.species_vocab_size - 1)
-        items = torch.clamp(obs_dict["items"].long(), 0, self.item_vocab_size - 1)
-        abilities = torch.clamp(obs_dict["abilities"].long(), 0, self.ability_vocab_size - 1)
+        sp_max = self.species_embed.num_embeddings - 1
+        it_max = self.item_embed.num_embeddings - 1
+        ab_max = self.ability_embed.num_embeddings - 1
+
+        species = torch.clamp(obs_dict["species"].long(), 0, sp_max)
+        items = torch.clamp(obs_dict["items"].long(), 0, it_max)
+        abilities = torch.clamp(obs_dict["abilities"].long(), 0, ab_max)
 
         return {
             "base_obs": base_obs,
@@ -592,8 +599,8 @@ class PokemonRLModule(TorchRLModule, ValueFunctionAPI):
         logits, values = self.model.heads_from_features(features, action_mask)
 
         if action_mask is not None:
-            inf_mask = torch.clamp(torch.log(action_mask), min=-1e9)
-            logits = logits + inf_mask
+            logits = torch.where(action_mask <= 0, logits - 1e9, logits)
+  
 
         output: Dict[str, Any] = {
             Columns.ACTION_DIST_INPUTS: logits,
