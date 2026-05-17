@@ -500,13 +500,13 @@ def get_config(preset: str = "standard") -> TrainingConfig:
             curriculum=CurriculumConfig(
                 enabled=True,
                 rolling_window_episodes=400,
-                min_episodes_before_promotion=1000, 
+                min_episodes_before_promotion=2500, 
                 stages=[
                     CurriculumStageConfig(
                         name="warmup",
-                        promote_at_win_rate=0.75,
+                        promote_at_win_rate=0.55,
                         min_samples_for_promotion=400,
-                        opponent_mix={"random": 0.6, "random_no_switch": 0.4},
+                        opponent_mix={"random": 0.55, "random_no_switch": 0.35, "heuristic": 0.1},
                         reward_config=RewardConfig(
                             victory_reward=20.0,
                             defeat_penalty=-20.0,
