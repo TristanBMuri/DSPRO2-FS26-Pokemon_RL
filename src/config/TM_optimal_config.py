@@ -95,7 +95,7 @@ class EnvironmentConfig:
     # corresponding custom-game variant (e.g. gen5randombattle → gen5customgame).
     # you can use data/teams/player_team_2.txt as an example.
     # or for no team, set to None.
-    player_team_path: Optional[str] = "data/teams/player_team_2.txt"
+    player_team_path: Optional[str] = None
 
     # MLflow experiment name when player_team_path is set (fixed-team training).
     mlflow_experiment_fixed_team: str = "Pokemon_RL_Marvin_Fixed"
