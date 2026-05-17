@@ -207,9 +207,14 @@ class PokemonTransformerModel(nn.Module):
     def _embed_obs(self, obs_dict: Dict[str, TensorType]) -> TensorType:
         """Project a flat (B', tokens, ...) obs dict to token embeddings."""
         base_obs = obs_dict["obs"].float()
-        species = obs_dict["species"].long()
-        items = obs_dict["items"].long()
-        abilities = obs_dict["abilities"].long()
+        
+        sp_max = self.species_embed.num_embeddings - 1
+        it_max = self.item_embed.num_embeddings - 1
+        ab_max = self.ability_embed.num_embeddings - 1
+
+        species = torch.clamp(obs_dict["species"].long(), 0, sp_max)
+        items = torch.clamp(obs_dict["items"].long(), 0, it_max)
+        abilities = torch.clamp(obs_dict["abilities"].long(), 0, ab_max)
 
         species_emb = self.species_embed(species)
         items_emb = self.item_embed(items)
@@ -248,9 +253,15 @@ class PokemonTransformerModel(nn.Module):
         self, obs_dict: Dict[str, TensorType]
     ) -> Dict[str, TensorType]:
         base_obs = obs_dict["obs"].float()
-        species = obs_dict["species"].long()
-        items = obs_dict["items"].long()
-        abilities = obs_dict["abilities"].long()
+        
+        sp_max = self.species_embed.num_embeddings - 1
+        it_max = self.item_embed.num_embeddings - 1
+        ab_max = self.ability_embed.num_embeddings - 1
+
+        species = torch.clamp(obs_dict["species"].long(), 0, sp_max)
+        items = torch.clamp(obs_dict["items"].long(), 0, it_max)
+        abilities = torch.clamp(obs_dict["abilities"].long(), 0, ab_max)
+
         return {
             "base_obs": base_obs,
             "species_emb": self.species_embed(species),
@@ -566,15 +577,36 @@ class PokemonRLModule(TorchRLModule, ValueFunctionAPI):
     def get_initial_state(self) -> Dict[str, Any]:
         return self.model.get_initial_state()
 
-    # ---- Forward passes -------------------------------------------------
-
     def _forward(self, batch: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         obs_dict = batch[Columns.OBS]
         state = batch.get(Columns.STATE_IN, None)
         features, new_state, action_mask = self.model.compute_features(obs_dict, state)
         logits, _values = self.model.heads_from_features(features, action_mask)
 
+        if action_mask is not None:
+            inf_mask = torch.clamp(torch.log(action_mask), min=-1e9)
+            logits = logits + inf_mask
+
         output: Dict[str, Any] = {Columns.ACTION_DIST_INPUTS: logits}
+        if self.model.use_lstm:
+            output[Columns.STATE_OUT] = new_state
+        return output
+
+    def _forward_train(self, batch: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+        obs_dict = batch[Columns.OBS]
+        state = batch.get(Columns.STATE_IN, None)
+        features, new_state, action_mask = self.model.compute_features(obs_dict, state)
+        logits, values = self.model.heads_from_features(features, action_mask)
+
+        if action_mask is not None:
+            logits = torch.where(action_mask <= 0, logits - 1e9, logits)
+  
+
+        output: Dict[str, Any] = {
+            Columns.ACTION_DIST_INPUTS: logits,
+            Columns.VF_PREDS: values,
+            Columns.EMBEDDINGS: features,
+        }
         if self.model.use_lstm:
             output[Columns.STATE_OUT] = new_state
         return output
@@ -587,23 +619,7 @@ class PokemonRLModule(TorchRLModule, ValueFunctionAPI):
         with torch.no_grad():
             return self._forward(batch, **kwargs)
 
-    def _forward_train(self, batch: Dict[str, Any], **kwargs) -> Dict[str, Any]:
-        obs_dict = batch[Columns.OBS]
-        state = batch.get(Columns.STATE_IN, None)
-        features, new_state, action_mask = self.model.compute_features(obs_dict, state)
-        logits, values = self.model.heads_from_features(features, action_mask)
 
-        output: Dict[str, Any] = {
-            Columns.ACTION_DIST_INPUTS: logits,
-            Columns.VF_PREDS: values,
-            # Stash the trunk output so PPO's loss can re-use it via
-            # ``compute_values(batch, embeddings=...)`` without rerunning the
-            # transformer + LSTM.
-            Columns.EMBEDDINGS: features,
-        }
-        if self.model.use_lstm:
-            output[Columns.STATE_OUT] = new_state
-        return output
 
     # ---- ValueFunctionAPI ----------------------------------------------
 
