@@ -33,16 +33,6 @@ def compressed_to_native_action(action: int, battle: AbstractBattle) -> np.int64
 
 
 def get_compressed_action_mask(battle: AbstractBattle) -> np.ndarray:
-    """Return a compressed action mask based on direct battle state.
-
-    Uses ``battle.available_moves`` and ``battle.available_switches``
-    directly instead of calling ``action_to_order`` with ``strict=True``,
-    which can fail when ``battle.valid_orders`` is stale or empty.
-
-    This avoids the previous fallback that forced ``mask[0] = 1.0`` when
-    no action passed verification — a fallback that contaminated ~14% of
-    training samples with incorrect action labels.
-    """
     mask = np.zeros(COMPRESSED_ACTION_SPACE_N, dtype=np.float32)
 
     active = battle.active_pokemon
@@ -50,7 +40,7 @@ def get_compressed_action_mask(battle: AbstractBattle) -> np.ndarray:
     trapped = getattr(battle, "trapped", False)
 
     # --- Switch actions (compressed 8-13) ---
-    if not trapped:
+    if force_switch or not trapped:
         _mark_available_switches(mask, battle)
 
     # --- Move actions (compressed 0-3) ---
@@ -58,7 +48,6 @@ def get_compressed_action_mask(battle: AbstractBattle) -> np.ndarray:
         _mark_available_moves(mask, battle, active)
 
     # --- Gimmick actions (compressed 4-7) ---
-    # Gimmicks are rare (gen6+ only); existing verification is acceptable.
     if active is not None and not force_switch:
         for gim_i in range(len(COMPRESSED_GIMMICK_ACTIONS)):
             try:
@@ -69,18 +58,12 @@ def get_compressed_action_mask(battle: AbstractBattle) -> np.ndarray:
             except (IndexError, ValueError):
                 continue
 
-    # Safety net: when the mask is empty (transition states like post-faint,
-    # battle init), find any valid action via find_safe_native_action.
-    # This is much rarer than the old mask[0]=1.0 fallback which triggered
-    # ~14% of the time due to stale valid_orders.
     if not mask.any():
         safe = find_safe_native_action(battle)
         compressed = native_to_compressed_action(int(safe), battle)
         if compressed is not None:
             mask[compressed] = 1.0
 
-    # If still empty (e.g. safe native -2 unmappable to compressed), recover with
-    # strict legality checks — rare; avoids an all-zero mask breaking the policy.
     if not mask.any():
         _fill_mask_from_strict_verify(mask, battle)
     if not mask.any():

@@ -495,7 +495,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                 train_batch_size=8192,
                 sgd_minibatch_size=512,
                 clip_param=0.2,
-                entropy_coeff=0.005, 
+                entropy_coeff=0.012, 
             ),
             curriculum=CurriculumConfig(
                 enabled=True,
@@ -504,7 +504,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                 stages=[
                     CurriculumStageConfig(
                         name="warmup",
-                        promote_at_win_rate=0.65,
+                        promote_at_win_rate=0.75,
                         min_samples_for_promotion=400,
                         opponent_mix={"random": 0.6, "random_no_switch": 0.4},
                         reward_config=RewardConfig(
@@ -522,7 +522,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                         name="heuristic_tactics",
                         promote_at_win_rate=0.65, 
                         min_samples_for_promotion=400,
-                        opponent_mix={"random_no_switch": 0.15, "heuristic": 0.60, "self": 0.25},
+                        opponent_mix={"random": 0.1, "random_no_switch": 0.2, "heuristic": 0.5, "self": 0.2},
                         reward_config=RewardConfig(
                             victory_reward=20.0,
                             defeat_penalty=-20.0,
