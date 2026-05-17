@@ -18,7 +18,7 @@ Requirements:
 import argparse
 import mlflow
 from dotenv import load_dotenv, find_dotenv
-
+import os
 
 def main():
     load_dotenv(find_dotenv())
@@ -32,11 +32,11 @@ def main():
     parser.add_argument(
         "--preset",
         type=str,
-        default="standard",
-        choices=["quick", "standard", "memory_safe", "optimal", "large"],
+        default="standard", 
+        choices=["quick", "standard", "memory_safe", "optimal", "large", "mav", "pure_league_play"],
         help="Configuration preset (default: standard)",
     )
-
+    
     # Timesteps
     parser.add_argument(
         "--timesteps", type=int, default=None, help="Override total timesteps"

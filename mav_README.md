@@ -48,3 +48,5 @@ for f in train_battler.py src/config/TM_optimal_config.py src/training/historica
 done
 
 tree src/ scripts/ data/
+
+git diff HEAD..marv-dev > all_differences.txt

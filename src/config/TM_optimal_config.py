@@ -95,7 +95,7 @@ class EnvironmentConfig:
     # corresponding custom-game variant (e.g. gen5randombattle → gen5customgame).
     # you can use data/teams/player_team_2.txt as an example.
     # or for no team, set to None.
-    player_team_path: Optional[str] = None
+    player_team_path: Optional[str] = "data/teams/player_team_2.txt"
 
     # MLflow experiment name when player_team_path is set (fixed-team training).
     mlflow_experiment_fixed_team: str = "Pokemon_RL_Marvin_Fixed"
@@ -530,6 +530,26 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                             fainted_value=3.0,
                             fainted_penalty=-3.0,
                             action_quality_weight=0.0, 
+                            matchup_reward_weight=0.0,
+                            reward_scale=0.1,
+                        )
+                    ),
+                    CurriculumStageConfig(
+                        name="league_training",
+                        promote_at_win_rate=2.0,    
+                        min_samples_for_promotion=999999,
+                        opponent_mix={
+                            "heuristic": 0.3, 
+                            "historical": 0.4, 
+                            "self": 0.3
+                        }, 
+                        reward_config=RewardConfig(
+                            victory_reward=25.0,    
+                            defeat_penalty=-25.0,
+                            hp_value_weight=0.0,
+                            fainted_value=0.0,
+                            fainted_penalty=0.0,
+                            action_quality_weight=0.0,
                             matchup_reward_weight=0.0,
                             reward_scale=0.1,
                         )
