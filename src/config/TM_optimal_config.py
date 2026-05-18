@@ -79,7 +79,7 @@ class PPOConfig:
     train_batch_size: int = 4096
     # TODO: test this with different values.
     sgd_minibatch_size: int = 512
-    num_sgd_iter: int = 8
+    num_sgd_iter: int = 5
 
 
 @dataclass
