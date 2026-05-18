@@ -562,45 +562,31 @@ class CurriculumSingleAgentWrapper(SingleAgentWrapper):
         return result
 
     def step(self, action):
-        active_battle = getattr(self.env, "current_battle", None)
-        if active_battle is None:
-            if hasattr(self.env, "battles") and self.env.battles:
-                active_battle = list(self.env.battles.values())[0]
-            else:
-                active_battle = getattr(self.env, "battle1", None)
-
-        if action is not None and active_battle is not None:
+        if action is not None:
             action_int = int(action)
             self.env._last_compressed_action = action_int
             self._episode_total_actions += 1
-            
             if is_compressed_switch_action(action_int):
                 self._episode_switch_actions += 1
             else:
                 self._episode_attack_actions += 1
-                
             try:
-                native_action = compressed_to_native_action(action_int, active_battle)
-                SinglesEnv.action_to_order(native_action, active_battle, fake=False, strict=True)
-            except Exception:
-                self.env._step_fallback_penalty = True
-                self.env._fallback_events_current_episode += 1
-                
-                native_action = np.int64(-2)
-                if active_battle.valid_orders:
-                    for safe_order in active_battle.valid_orders:
-                        try:
-                            native_action = SinglesEnv.order_to_action(
-                                safe_order, active_battle, fake=False, strict=True
-                            )
-                            break
-                        except Exception:
-                            continue
+                native_action = compressed_to_native_action(
+                    action_int, self.env.battle1
+                )
+            except (ValueError, IndexError):
+                native_action = find_safe_native_action(self.env.battle1)
+            else:
+                try:
+                    SinglesEnv.action_to_order(
+                        native_action, self.env.battle1, fake=False, strict=True
+                    )
+                except Exception:
+                    native_action = find_safe_native_action(self.env.battle1)
         else:
             native_action = action
 
         result = super().step(native_action)
-        
         terminated = False
         truncated = False
         if isinstance(result, tuple):
@@ -623,7 +609,6 @@ class CurriculumSingleAgentWrapper(SingleAgentWrapper):
                     "opponent_type": self._current_opponent_key,
                 }
             )
-            
         obs = result[0] if isinstance(result, tuple) and len(result) > 0 else None
         self._record_observation_sample(obs)
         return result
