@@ -186,196 +186,81 @@ class PokemonBattleEnv(SinglesEnv):
             # Refresh terminal marker while reward callbacks are still firing.
             self._completed_battle_steps[battle_key] = self._env_step_counter
 
-        return self._compute_configured_delta_reward(battle)
+        reward = float(self._compute_configured_delta_reward(battle))
+        
+        if getattr(self, "_step_fallback_penalty", False):
+            reward -= 7.0 
+            self._step_fallback_penalty = False
+            
+        return reward
 
     def _compute_configured_delta_reward(self, battle: AbstractBattle) -> float:
         """Poke-env style delta reward with matchup shaping."""
         if battle not in self._reward_buffer:
             self._reward_buffer[battle] = 0.0
 
-        current_value = 0.0
+        state_value = 0.0
         hp_value = self.reward_config.hp_value_weight
         fainted_value = self.reward_config.fainted_value
+        fainted_penalty = self.reward_config.fainted_penalty
         number_of_pokemons = 6
 
+        # Calculate OUR Persistent State
+        our_hp = 0.0
         for mon in battle.team.values():
-            current_value += mon.current_hp_fraction * hp_value
+            our_hp += mon.current_hp_fraction
             if mon.fainted:
-                current_value += self.reward_config.fainted_penalty
+                state_value += fainted_penalty
+        
+        # Unrevealed own Pokemon
+        our_hp += (number_of_pokemons - len(battle.team))
 
-        current_value += (number_of_pokemons - len(battle.team)) * hp_value
-
+        # Calculate OPPONENT Persistent State
+        opp_hp = 0.0
         for mon in battle.opponent_team.values():
-            current_value -= mon.current_hp_fraction * hp_value
+            opp_hp += mon.current_hp_fraction
             if mon.fainted:
-                current_value += fainted_value
+                state_value += fainted_value
+                
+        # Unrevealed opponent Pokemon
+        opp_hp += (number_of_pokemons - len(battle.opponent_team))
 
-        current_value -= (number_of_pokemons - len(battle.opponent_team)) * hp_value
+        # Apply HP weights
+        state_value += our_hp * hp_value
+        state_value -= opp_hp * hp_value
 
-        # Type matchup shaping: reward favorable active matchups
+        # Calculate Delta
+        reward_delta = state_value - self._reward_buffer[battle]
+        self._reward_buffer[battle] = state_value
+
+        # Ephemeral Step Rewards
+        step_reward = 0.0
+        
         if self.reward_config.matchup_reward_weight > 0:
-            current_value += (
-                self._compute_matchup_quality(battle)
-                * self.reward_config.matchup_reward_weight
-            )
+            step_reward += self._compute_matchup_quality(battle) * self.reward_config.matchup_reward_weight
 
-        # Action quality: reward picking effective moves + defensive awareness
         if self.reward_config.action_quality_weight > 0:
-            current_value += (
-                self._compute_action_quality(battle)
-                * self.reward_config.action_quality_weight
-            )
+            step_reward += self._compute_action_quality(battle) * self.reward_config.action_quality_weight
 
         if battle.won:
-            current_value += self.reward_config.victory_reward
+            step_reward += self.reward_config.victory_reward
         elif battle.lost:
-            current_value += self.reward_config.defeat_penalty
+            step_reward += self.reward_config.defeat_penalty
 
-        reward = current_value - self._reward_buffer[battle]
-        self._reward_buffer[battle] = current_value
-        return reward * self.reward_config.reward_scale
+        return (reward_delta + step_reward) * self.reward_config.reward_scale
 
     @staticmethod
     def _compute_matchup_quality(battle: AbstractBattle) -> float:
-        """Score the type effectiveness of our active's best move vs opponent active.
-
-        Returns a value in [-1.0, 1.0]:
-          +1.0 = super-effective move available
-           0.0 = neutral or no data
-          -0.5 = only resisted moves
-          -1.0 = opponent immune to all our moves
-        """
-        our = battle.active_pokemon
-        opp = battle.opponent_active_pokemon
-        if our is None or opp is None:
-            return 0.0
-
-        opp_types = opp.types
-        if not opp_types:
-            return 0.0
-
-        best = 0.0
-        any_offensive = False
-        for move in our.moves.values():
-            move_type = getattr(move, "type", None)
-            if move_type is None:
-                continue
-            # Only consider damaging moves (physical/special)
-            category = getattr(move, "category", None)
-            if category is not None and getattr(category, "name", "") == "STATUS":
-                continue
-            try:
-                mult = move_type.damage_multiplier(*opp_types)
-            except Exception:
-                continue
-            any_offensive = True
-            best = max(best, mult)
-
-        if not any_offensive:
-            return 0.0
-
-        if best >= 2.0:
-            return 1.0
-        elif best >= 1.0:
-            return 0.0
-        elif best > 0.0:
-            return -0.5
-        else:
-            return -1.0
+        """Stripped."""
+        return 0.0
 
     def _compute_action_quality(self, battle: AbstractBattle) -> float:
-        """Score the quality of the last action taken.
-
-        Offensive (action-level): penalizes picking a sub-optimal damaging move.
-        Defensive (state-level): rewards when our active resists opponent's best move.
-
-        Returns a value roughly in [-1.5, 1.0].
         """
-        our = battle.active_pokemon
-        opp = battle.opponent_active_pokemon
-        if our is None or opp is None:
-            return 0.0
-
-        score = 0.0
-
-        # --- Offensive component ---
-        action = self._last_compressed_action
-        is_move_action = 0 <= action <= 7  # moves (0-3) or gimmick moves (4-7)
-        if is_move_action:
-            move_slot = action if action < 4 else action - 4
-            known_moves = list(our.moves.values())
-
-            if move_slot < len(known_moves):
-                opp_types = opp.types
-                if opp_types:
-                    chosen_move = known_moves[move_slot]
-                    chosen_cat = getattr(chosen_move, "category", None)
-                    chosen_is_status = (
-                        chosen_cat is not None
-                        and getattr(chosen_cat, "name", "") == "STATUS"
-                    )
-
-                    if not chosen_is_status:
-                        # Compute effectiveness of chosen move
-                        chosen_type = getattr(chosen_move, "type", None)
-                        chosen_eff = 0.0
-                        if chosen_type is not None:
-                            try:
-                                chosen_eff = chosen_type.damage_multiplier(*opp_types)
-                            except Exception:
-                                chosen_eff = 1.0
-
-                        # Find best effectiveness among all damaging moves
-                        best_eff = 0.0
-                        for m in known_moves:
-                            m_type = getattr(m, "type", None)
-                            if m_type is None:
-                                continue
-                            m_cat = getattr(m, "category", None)
-                            if (
-                                m_cat is not None
-                                and getattr(m_cat, "name", "") == "STATUS"
-                            ):
-                                continue
-                            try:
-                                eff = m_type.damage_multiplier(*opp_types)
-                            except Exception:
-                                continue
-                            best_eff = max(best_eff, eff)
-
-                        # Penalty proportional to how far from best
-                        if best_eff > 0:
-                            score -= best_eff - chosen_eff
-                    # Status move: no penalty, no bonus (score += 0)
-
-        # --- Defensive component ---
-        opp_moves = getattr(opp, "moves", None)
-        if opp_moves:
-            our_types = our.types
-            if our_types:
-                best_opp_eff = 0.0
-                for m in opp_moves.values():
-                    m_type = getattr(m, "type", None)
-                    if m_type is None:
-                        continue
-                    m_cat = getattr(m, "category", None)
-                    if m_cat is not None and getattr(m_cat, "name", "") == "STATUS":
-                        continue
-                    try:
-                        eff = m_type.damage_multiplier(*our_types)
-                    except Exception:
-                        continue
-                    best_opp_eff = max(best_opp_eff, eff)
-
-                if best_opp_eff == 0.0:
-                    # Immune to opponent's best damaging move
-                    score += 1.0
-                elif best_opp_eff <= 0.5:
-                    # Resists opponent's best move
-                    score += 0.5
-
-        return score
-
+        Stripped down to prevent the agent from finding pacifist exploits.
+        Let the HP delta and Win/Loss rewards do the teaching.
+        """
+        return 0.0
+    
     def set_reward_config(self, reward_config: RewardConfig) -> None:
         """Update reward configuration at runtime."""
         self.reward_config = reward_config
