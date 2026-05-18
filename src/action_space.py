@@ -13,7 +13,6 @@ COMPRESSED_MOVE_ACTIONS = range(0, 4)
 COMPRESSED_GIMMICK_ACTIONS = range(4, 8)
 COMPRESSED_SWITCH_ACTIONS = range(8, 14)
 
-# Restored your correct original mapping!
 NATIVE_SWITCH_ACTIONS = range(0, 6)
 NATIVE_GIMMICK_OFFSETS = (10, 14, 18)
 
@@ -85,32 +84,33 @@ def _mark_available_moves(mask: np.ndarray, battle: AbstractBattle, active) -> N
 
 
 def _mark_available_switches(mask: np.ndarray, battle: AbstractBattle) -> None:
-    # Use species instead of id() to prevent memory bugs mid-battle
+    # Get poke-env's opinion on what is available
     available_switches = {mon.species for mon in getattr(battle, "available_switches", [])}
     if not available_switches:
         return
         
     team_list = list(battle.team.values())
+    active_mon = battle.active_pokemon
+    
     for i, mon in enumerate(team_list):
-        if mon.species in available_switches:
+        # THE FIX: Manually filter poke-env's lies. 
+        # Never allow switching to the active pokemon or a fainted pokemon.
+        if mon.species in available_switches and not mon.fainted and mon != active_mon:
             if 8 + i < COMPRESSED_ACTION_SPACE_N:
                 mask[8 + i] = 1.0
 
 
 def find_safe_native_action(battle: AbstractBattle) -> np.int64:
-    """Intelligently find an absolute action index instead of blindly guessing 0."""
+    """Intelligently find an absolute action index that is mathematically legal."""
     available_moves = getattr(battle, "available_moves", [])
-    available_switches = getattr(battle, "available_switches", [])
     active = battle.active_pokemon
     force_switch = getattr(battle, "force_switch", False)
 
-    def get_valid_switch_index() -> np.int64:
-        if not available_switches:
-            return np.int64(-2)
-        target_species = available_switches[0].species
+    def get_first_alive_bench_index() -> np.int64:
+        """Find the first team slot that is alive and not active."""
         for i, mon in enumerate(battle.team.values()):
-            if mon.species == target_species:
-                return np.int64(i)  # Maps perfectly to Native 0-5
+            if not mon.fainted and mon != active:
+                return np.int64(i)
         return np.int64(-2)
 
     # 1. Prefer a move if not forced to switch
@@ -124,13 +124,14 @@ def find_safe_native_action(battle: AbstractBattle) -> np.int64:
             if i >= 4:
                 break
             if move.id in available_ids:
-                return np.int64(6 + i)  # Maps perfectly to Native 6-9
+                return np.int64(6 + i) 
                 
         return np.int64(6)
 
-    # 2. Fallback to a valid, calculated switch index
-    if available_switches:
-        return get_valid_switch_index()
+    # 2. Fallback to the first mathematically alive bench Pokémon
+    safe_switch = get_first_alive_bench_index()
+    if safe_switch != -2:
+        return safe_switch
 
     return np.int64(-2)
 
