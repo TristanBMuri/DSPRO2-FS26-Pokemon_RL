@@ -562,31 +562,44 @@ class CurriculumSingleAgentWrapper(SingleAgentWrapper):
         return result
 
     def step(self, action):
-        if action is not None:
+        active_battle = getattr(self.env, "current_battle", None)
+        if active_battle is None:
+            if hasattr(self.env, "battles") and self.env.battles:
+                # Fallback to the first active battle in the dictionary
+                active_battle = list(self.env.battles.values())[0]
+            else:
+                # Absolute last resort
+                active_battle = getattr(self.env, "battle1", None)
+
+        if action is not None and active_battle is not None:
             action_int = int(action)
             self.env._last_compressed_action = action_int
             self._episode_total_actions += 1
+            
             if is_compressed_switch_action(action_int):
                 self._episode_switch_actions += 1
             else:
                 self._episode_attack_actions += 1
+                
             try:
+                # Validate against the TRUE active battle
                 native_action = compressed_to_native_action(
-                    action_int, self.env.battle1
+                    action_int, active_battle
                 )
             except (ValueError, IndexError):
-                native_action = find_safe_native_action(self.env.battle1)
+                native_action = find_safe_native_action(active_battle)
             else:
                 try:
                     SinglesEnv.action_to_order(
-                        native_action, self.env.battle1, fake=False, strict=True
+                        native_action, active_battle, fake=False, strict=True
                     )
                 except Exception:
-                    native_action = find_safe_native_action(self.env.battle1)
+                    native_action = find_safe_native_action(active_battle)
         else:
             native_action = action
 
         result = super().step(native_action)
+        
         terminated = False
         truncated = False
         if isinstance(result, tuple):
@@ -609,6 +622,7 @@ class CurriculumSingleAgentWrapper(SingleAgentWrapper):
                     "opponent_type": self._current_opponent_key,
                 }
             )
+            
         obs = result[0] if isinstance(result, tuple) and len(result) > 0 else None
         self._record_observation_sample(obs)
         return result
