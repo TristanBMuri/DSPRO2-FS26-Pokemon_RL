@@ -103,23 +103,14 @@ def _mark_available_switches(mask: np.ndarray, battle: AbstractBattle) -> None:
 
 
 def find_safe_native_action(battle: AbstractBattle) -> np.int64:
-    """Find a guaranteed-valid native action using direct availability.
-
-    Used as a safety net when the normal compressed→native conversion
-    produces an action that poke-env rejects (e.g. stale ``valid_orders``).
-    """
+    """Find a guaranteed-valid native action using direct availability."""
     available_moves = getattr(battle, "available_moves", [])
     available_switches = getattr(battle, "available_switches", [])
     active = battle.active_pokemon
     force_switch = getattr(battle, "force_switch", False)
 
-    # Prefer a move if not forced to switch
     if not force_switch and active is not None and available_moves:
-        # Struggle / recharge → native action 6 (move slot 0)
-        if len(available_moves) == 1 and available_moves[0].id in (
-            "struggle",
-            "recharge",
-        ):
+        if len(available_moves) == 1 and available_moves[0].id in ("struggle", "recharge"):
             return np.int64(6)
 
         known_moves = list(active.moves.values())
@@ -130,14 +121,9 @@ def find_safe_native_action(battle: AbstractBattle) -> np.int64:
             if move.id in available_ids:
                 return np.int64(6 + i)
 
-    # Fallback to a switch
     if available_switches:
-        switch_set = set(available_switches)
-        for i, mon in enumerate(battle.team.values()):
-            if mon in switch_set:
-                return np.int64(i)
+        return np.int64(0)
 
-    # Last resort: default (let poke-env handle it)
     return np.int64(-2)
 
 
@@ -160,8 +146,15 @@ def native_to_compressed_action(
             if int(mapped) == native_int:
                 return compressed
             return None
+            
     if native_int in NATIVE_SWITCH_ACTIONS:
-            return COMPRESSED_SWITCH_ACTIONS.start + native_int
+        available_switches = getattr(battle, "available_switches", [])
+        if native_int < len(available_switches):
+            target_mon = available_switches[native_int]
+            team_list = list(battle.team.values())
+            for i, mon in enumerate(team_list):
+                if id(mon) == id(target_mon):
+                    return COMPRESSED_SWITCH_ACTIONS.start + i
     return None
 
 
@@ -184,11 +177,20 @@ def _compressed_gimmick_to_native(action: int, battle: AbstractBattle) -> np.int
 
 
 def _compressed_switch_to_native(action: int, battle: AbstractBattle) -> np.int64:
-    """Absolute mapping: Action 8+i strictly corresponds to Team Slot i."""
-    switch_idx = int(action) - COMPRESSED_SWITCH_ACTIONS.start
-    if switch_idx < 0 or switch_idx >= 6:
-        raise ValueError(f"Invalid switch index {switch_idx}")
-    return np.int64(switch_idx)
+    """Map the absolute team slot to its index in poke-env's available_switches array."""
+    team_idx = int(action) - COMPRESSED_SWITCH_ACTIONS.start
+    team_list = list(battle.team.values())
+    if team_idx < 0 or team_idx >= len(team_list):
+        raise ValueError(f"Invalid switch index {team_idx}")
+    
+    target_mon = team_list[team_idx]
+    available_switches = getattr(battle, "available_switches", [])
+    
+    for i, sw_mon in enumerate(available_switches):
+        if id(sw_mon) == id(target_mon):
+            return np.int64(i)
+            
+    raise ValueError(f"Team slot {team_idx} is not currently an available switch.")
 
 
 def _fill_mask_from_strict_verify(mask: np.ndarray, battle: AbstractBattle) -> None:
