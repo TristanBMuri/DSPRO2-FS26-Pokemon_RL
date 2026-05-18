@@ -91,15 +91,16 @@ def _mark_available_moves(mask: np.ndarray, battle: AbstractBattle, active) -> N
 
 
 def _mark_available_switches(mask: np.ndarray, battle: AbstractBattle) -> None:
-    available_switches = {id(mon) for mon in getattr(battle, "available_switches", [])}
+    available_switches = getattr(battle, "available_switches", [])
     if not available_switches:
         return
         
     team_list = list(battle.team.values())
-    for i, mon in enumerate(team_list):
-        if id(mon) in available_switches:
-            if 8 + i < COMPRESSED_ACTION_SPACE_N:
-                mask[8 + i] = 1.0
+    for mon in available_switches:
+        for i, team_mon in enumerate(team_list):
+            if id(mon) == id(team_mon):
+                if 8 + i < COMPRESSED_ACTION_SPACE_N:
+                    mask[8 + i] = 1.0
 
 
 def find_safe_native_action(battle: AbstractBattle) -> np.int64:
