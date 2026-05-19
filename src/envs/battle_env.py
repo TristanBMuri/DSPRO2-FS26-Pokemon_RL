@@ -189,7 +189,7 @@ class PokemonBattleEnv(SinglesEnv):
         reward = float(self._compute_configured_delta_reward(battle))
         
         if getattr(self, "_step_fallback_penalty", False):
-            reward -= 7.0 
+            reward -= 0.5
             self._step_fallback_penalty = False
             
         return reward

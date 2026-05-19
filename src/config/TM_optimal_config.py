@@ -520,7 +520,7 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                     ),
                     CurriculumStageConfig(
                         name="heuristic_tactics",
-                        promote_at_win_rate=0.65, 
+                        promote_at_win_rate=0.6, 
                         min_samples_for_promotion=400,
                         opponent_mix={"random": 0.1, "random_no_switch": 0.2, "heuristic": 0.5, "self": 0.2},
                         reward_config=RewardConfig(
@@ -540,8 +540,10 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                         min_samples_for_promotion=999999,
                         opponent_mix={
                             "heuristic": 0.3, 
-                            "historical": 0.4, 
-                            "self": 0.3
+                            "historical": 0.17, 
+                            "self": 0.3,
+                            "random": 0.1,
+                            "random_no_switch": 0.13
                         }, 
                         reward_config=RewardConfig(
                             victory_reward=25.0,    
