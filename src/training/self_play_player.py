@@ -163,8 +163,13 @@ class SelfPlayPlayer(Player):
 
         # 4. Sample from softmax distribution (temperature < 1.0 = sharper)
         temperature = 0.8
-        probs = torch.softmax(logits / temperature, dim=-1)
-        action = int(torch.multinomial(probs, 1).item())
+        logits = logits / temperature
+        probs = torch.softmax(logits, dim=-1)
+        
+        try:
+            action = int(torch.multinomial(probs, 1).item())
+        except RuntimeError:
+            action = 0
 
         # Record diagnostics
         valid_count = int(action_mask.sum())

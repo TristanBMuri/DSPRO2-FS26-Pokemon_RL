@@ -585,19 +585,14 @@ class CurriculumSingleAgentWrapper(SingleAgentWrapper):
                 self._episode_attack_actions += 1
             
             try:
-                # 1. Attempt standard compressed-to-native conversion
                 native_action = compressed_to_native_action(
                     action_int, self.env.battle1
                 )
-                # 2. Force poke-env to validate the order structure strictly
                 SinglesEnv.action_to_order(
                     native_action, self.env.battle1, fake=False, strict=True
                 )
             except (ValueError, IndexError, Exception):
-                # AGENT HALUCINATION DETECTED: Action is invalid for the current board state
                 native_action = find_safe_native_action(self.env.battle1)
-                
-                # Arm the -7.0 reward penalty for the upcoming environment transition
                 self.env._step_fallback_penalty = True
         else:
             native_action = action
