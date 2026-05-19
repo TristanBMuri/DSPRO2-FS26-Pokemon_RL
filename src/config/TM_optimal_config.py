@@ -539,10 +539,8 @@ def get_config(preset: str = "standard") -> TrainingConfig:
                         promote_at_win_rate=2.0,    
                         min_samples_for_promotion=999999,
                         opponent_mix={
-                            "random": 0.05,
-                            "random_no_switch": 0.1,
                             "heuristic": 0.3, 
-                            "historical": 0.25, 
+                            "historical": 0.4, 
                             "self": 0.3
                         }, 
                         reward_config=RewardConfig(

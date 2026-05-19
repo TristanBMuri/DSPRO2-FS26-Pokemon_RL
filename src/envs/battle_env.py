@@ -29,19 +29,6 @@ from src.models.embedding import (
 )
 from src.config.TM_optimal_config import RewardConfig
 
-from poke_env.player.battle_order import BattleOrder
-
-class NoGimmickHeuristicsPlayer(SimpleHeuristicsPlayer):
-    """A heuristic player that is forced to respect the No Gimmicks format."""
-    def choose_move(self, battle):
-        order = super().choose_move(battle)
-        # Strip gimmick flags if it returns a BattleOrder
-        if isinstance(order, BattleOrder):
-            order.dynamax = False
-            order.terastallize = False
-            order.z_move = False
-            order.mega = False
-        return order
 
 # =============================================================================
 # OBSERVATION SPACE
@@ -202,7 +189,7 @@ class PokemonBattleEnv(SinglesEnv):
         reward = float(self._compute_configured_delta_reward(battle))
         
         if getattr(self, "_step_fallback_penalty", False):
-            reward -= (8.0 * self.reward_config.reward_scale)
+            reward -= 7.0 
             self._step_fallback_penalty = False
             
         return reward
@@ -496,7 +483,7 @@ class CurriculumSingleAgentWrapper(SingleAgentWrapper):
                 team=self._opponent_team,
             )
         if opponent_key == "heuristic":
-            opponent_class = NoGimmickHeuristicsPlayer
+            opponent_class = SimpleHeuristicsPlayer
             opponent_id = f"hrs_{uuid.uuid4().hex[:6]}"
         elif opponent_key == "random_no_switch":
             from src.envs.random_no_switch_player import RandomNoSwitchPlayer
@@ -583,21 +570,22 @@ class CurriculumSingleAgentWrapper(SingleAgentWrapper):
                 self._episode_switch_actions += 1
             else:
                 self._episode_attack_actions += 1
-            
             try:
                 native_action = compressed_to_native_action(
                     action_int, self.env.battle1
                 )
-                SinglesEnv.action_to_order(
-                    native_action, self.env.battle1, fake=False, strict=True
-                )
-            except (ValueError, IndexError, Exception):
+            except (ValueError, IndexError):
                 native_action = find_safe_native_action(self.env.battle1)
-                self.env._step_fallback_penalty = True
+            else:
+                try:
+                    SinglesEnv.action_to_order(
+                        native_action, self.env.battle1, fake=False, strict=True
+                    )
+                except Exception:
+                    native_action = find_safe_native_action(self.env.battle1)
         else:
             native_action = action
 
-        # Execute step against the underlying ecosystem environment
         result = super().step(native_action)
         terminated = False
         truncated = False
@@ -853,7 +841,7 @@ def create_env_creator(
         # when opponent mixes are configured.
         opponent_id = f"rnd_{uuid.uuid4().hex[:6]}"
         if difficulty in {"heuristic", "heuristics"}:
-            opponent_class = NoGimmickHeuristicsPlayer
+            opponent_class = SimpleHeuristicsPlayer
             opponent_id = f"hrs_{uuid.uuid4().hex[:6]}"
         elif difficulty == "random_no_switch":
             from src.envs.random_no_switch_player import RandomNoSwitchPlayer
